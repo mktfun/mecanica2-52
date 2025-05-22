@@ -168,16 +168,16 @@ export default function ListView() {
           <div className="space-y-1">
             <Label htmlFor="status-filter" className="text-xs">Status</Label>
             <Select
-              value={filter.status || ''}
-              onValueChange={(value) => value ? 
-                handleFilterChange('status', value as Appointment['status']) : 
-                handleFilterChange('status', undefined)}
+              value={filter.status || 'all_statuses'}
+              onValueChange={(value) => value === 'all_statuses' ? 
+                handleFilterChange('status', undefined) : 
+                handleFilterChange('status', value as Appointment['status'])}
             >
               <SelectTrigger id="status-filter">
                 <SelectValue placeholder="Todos os status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all_statuses">Todos</SelectItem>
                 <SelectItem value="scheduled">Agendado</SelectItem>
                 <SelectItem value="in-progress">Em andamento</SelectItem>
                 <SelectItem value="completed">Concluído</SelectItem>
