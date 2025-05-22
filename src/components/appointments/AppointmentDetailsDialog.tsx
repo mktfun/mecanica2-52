@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -28,7 +27,7 @@ import {
   Trash, 
   User, 
   Car, 
-  Tool, 
+  Wrench, 
   FileText 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -166,7 +165,7 @@ const AppointmentDetailsDialog: React.FC<AppointmentDetailsDialogProps> = ({
             </div>
             
             <div className="flex items-start gap-3">
-              <Tool className="h-5 w-5 text-gray-500 dark:text-gray-400 mt-0.5" />
+              <Wrench className="h-5 w-5 text-gray-500 dark:text-gray-400 mt-0.5" />
               <div>
                 <div className="text-sm font-medium">Serviço</div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">
