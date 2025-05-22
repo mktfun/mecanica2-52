@@ -1,4 +1,3 @@
-
 import { StorageService } from '@/core/storage/StorageService';
 import { Appointment, AppointmentFilter } from '@/types/appointment';
 
@@ -14,7 +13,15 @@ export const appointmentService = {
 
   // Adicionar novo agendamento
   addAppointment(appointment: Omit<Appointment, 'id' | 'created_at' | 'updated_at'>): Appointment {
-    return appointmentStorage.add(appointment);
+    // Adicionar o campo updated_at automaticamente
+    const now = new Date().toISOString();
+    const appointmentWithUpdatedAt = {
+      ...appointment,
+      updated_at: now
+    };
+    
+    // Agora o objeto está compatível com o tipo esperado pelo StorageService
+    return appointmentStorage.add(appointmentWithUpdatedAt as Omit<Appointment, 'id' | 'created_at'>);
   },
 
   // Atualizar agendamento existente

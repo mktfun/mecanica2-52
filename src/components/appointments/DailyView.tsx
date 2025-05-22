@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, addHours, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -7,20 +6,11 @@ import AppointmentDetailsDialog from './AppointmentDetailsDialog';
 import CreateAppointmentDialog from './CreateAppointmentDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useAppointments } from '@/hooks/useAppointments';
+import { Appointment } from '@/types/appointment';
 
 interface DailyViewProps {
   selectedDate: Date;
-}
-
-interface Appointment {
-  id: string;
-  client_name: string;
-  vehicle_info: string;
-  service_type: string;
-  start_time: string;
-  end_time: string;
-  mechanic_name: string;
-  status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
 }
 
 // Horário de funcionamento da oficina
@@ -37,6 +27,7 @@ const DailyView: React.FC<DailyViewProps> = ({ selectedDate }) => {
   const [isNewAppointmentDialogOpen, setIsNewAppointmentDialogOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<Date | null>(null);
   const { toast } = useToast();
+  const { getAppointmentsForDate } = useAppointments();
   
   // Array de horas do dia de funcionamento
   const hours = Array.from(
@@ -52,51 +43,12 @@ const DailyView: React.FC<DailyViewProps> = ({ selectedDate }) => {
     setIsLoading(true);
     
     try {
-      // Formatamos a data para filtrar os agendamentos
-      const dateString = format(selectedDate, 'yyyy-MM-dd');
-      
-      // Simulamos a obtenção dos dados (em um app real, isso seria uma chamada ao Supabase)
-      // Aguardamos 1 segundo para simular o loading
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Dados de exemplo
-      const mockAppointments: Appointment[] = [
-        {
-          id: '1',
-          client_name: 'João Silva',
-          vehicle_info: 'Honda Civic 2018 - ABC1234',
-          service_type: 'Troca de Óleo',
-          start_time: `${dateString}T09:00:00`,
-          end_time: `${dateString}T10:00:00`,
-          mechanic_name: 'Carlos Ferreira',
-          status: 'scheduled'
-        },
-        {
-          id: '2',
-          client_name: 'Maria Santos',
-          vehicle_info: 'Toyota Corolla 2020 - DEF5678',
-          service_type: 'Revisão Completa',
-          start_time: `${dateString}T11:00:00`,
-          end_time: `${dateString}T14:00:00`,
-          mechanic_name: 'André Sousa',
-          status: 'in-progress'
-        },
-        {
-          id: '3',
-          client_name: 'Pedro Oliveira',
-          vehicle_info: 'Fiat Uno 2015 - GHI9012',
-          service_type: 'Troca de Pastilhas',
-          start_time: `${dateString}T14:30:00`,
-          end_time: `${dateString}T16:00:00`,
-          mechanic_name: 'Ricardo Almeida',
-          status: 'completed'
-        }
-      ];
-      
-      setAppointments(mockAppointments);
+      // Usar o hook useAppointments para obter agendamentos
+      const fetchedAppointments = getAppointmentsForDate(selectedDate);
+      setAppointments(fetchedAppointments);
     } catch (error) {
       console.error('Erro ao carregar agendamentos:', error);
-      toast.add({
+      toast({
         title: 'Erro',
         description: 'Não foi possível carregar os agendamentos. Tente novamente mais tarde.',
         variant: 'destructive'

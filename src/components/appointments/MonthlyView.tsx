@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   format, 
@@ -17,21 +16,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppointmentDetailsDialog from './AppointmentDetailsDialog';
 import CreateAppointmentDialog from './CreateAppointmentDialog';
+import { useAppointments } from '@/hooks/useAppointments';
+import { Appointment } from '@/types/appointment';
 
 interface MonthlyViewProps {
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
-}
-
-interface Appointment {
-  id: string;
-  client_name: string;
-  vehicle_info: string;
-  service_type: string;
-  start_time: string;
-  end_time: string;
-  mechanic_name: string;
-  status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
 }
 
 const MonthlyView: React.FC<MonthlyViewProps> = ({ selectedDate, setSelectedDate }) => {
@@ -42,6 +32,7 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ selectedDate, setSelectedDate
   const [isNewAppointmentDialogOpen, setIsNewAppointmentDialogOpen] = useState(false);
   const [selectedDayForAppointment, setSelectedDayForAppointment] = useState<Date | null>(null);
   const { toast } = useToast();
+  const { getDaysWithAppointments, getAppointmentsForDate } = useAppointments();
   
   // Gerar dias do mês para o calendário
   const monthStart = startOfMonth(selectedDate);
@@ -79,46 +70,25 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ selectedDate, setSelectedDate
     setIsLoading(true);
     
     try {
-      // Aguardamos 1 segundo para simular o loading
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Calcular o início e fim do mês para buscar agendamentos
+      const monthStart = startOfMonth(selectedDate);
+      const monthEnd = endOfMonth(selectedDate);
       
-      // Dados de exemplo para o mês
-      const mockAppointments: Appointment[] = [];
+      // Buscar todos os dias com agendamentos no mês
+      const daysWithAppts = getDaysWithAppointments(monthStart, monthEnd);
       
-      // Gerar alguns agendamentos aleatórios para o mês
-      const daysInMonth = eachDayOfInterval({
-        start: monthStart,
-        end: monthEnd
-      });
+      // Buscar agendamentos para todos os dias
+      let allMonthAppointments: Appointment[] = [];
       
-      daysInMonth.forEach((day, dayIndex) => {
-        // Adicionar 0-3 agendamentos por dia
-        const numAppointments = Math.floor(Math.random() * 4);
-        
-        for (let i = 0; i < numAppointments; i++) {
-          const hour = Math.floor(Math.random() * (17 - 8)) + 8;
-          const duration = Math.floor(Math.random() * 3) + 1; // 1-3 horas
-          
-          const dateString = format(day, 'yyyy-MM-dd');
-          const id = `${dayIndex}-${i}-${Date.now()}`;
-          
-          mockAppointments.push({
-            id,
-            client_name: `Cliente ${id.substring(0, 4)}`,
-            vehicle_info: `Veículo ${Math.floor(Math.random() * 1000)}`,
-            service_type: ['Troca de Óleo', 'Revisão', 'Alinhamento', 'Freios', 'Elétrica'][Math.floor(Math.random() * 5)],
-            start_time: `${dateString}T${hour.toString().padStart(2, '0')}:00:00`,
-            end_time: `${dateString}T${(hour + duration).toString().padStart(2, '0')}:00:00`,
-            mechanic_name: ['Carlos', 'André', 'Ricardo', 'Paulo', 'Marcos'][Math.floor(Math.random() * 5)],
-            status: ['scheduled', 'in-progress', 'completed', 'cancelled'][Math.floor(Math.random() * 4)] as any
-          });
-        }
-      });
+      for (const day of daysWithAppts) {
+        const dayAppointments = getAppointmentsForDate(day);
+        allMonthAppointments = [...allMonthAppointments, ...dayAppointments];
+      }
       
-      setAppointments(mockAppointments);
+      setAppointments(allMonthAppointments);
     } catch (error) {
       console.error('Erro ao carregar agendamentos:', error);
-      toast.add({
+      toast({
         title: 'Erro',
         description: 'Não foi possível carregar os agendamentos. Tente novamente mais tarde.',
         variant: 'destructive'

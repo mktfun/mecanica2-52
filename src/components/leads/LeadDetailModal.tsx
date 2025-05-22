@@ -13,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
 import { Lead } from '@/types/lead';
 import { enhancedLeadsStore } from '@/core/storage/StorageService';
-import LeadFormModal from './LeadFormModal';
+import { LeadFormModal } from './LeadFormModal';
 import { eventBus } from '@/core/events/EventBus';
 
 const LEAD_STATUS_LABELS: Record<string, string> = {

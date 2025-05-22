@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { useEventSubscription } from '@/hooks/useEventSubscription';
 
 import CustomLeadKanban from "@/components/leads/CustomLeadKanban";
 import LeadList from "@/components/leads/LeadList";
-import LeadFormModal from "@/components/leads/LeadFormModal";
+import { LeadFormModal } from '@/components/leads/LeadFormModal';
 
 const Leads = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
