@@ -50,7 +50,7 @@ const AppointmentSelect = ({ onSelect }: AppointmentSelectProps) => {
   const handleChange = (appointmentId: string) => {
     setSelectedAppointmentId(appointmentId);
     
-    if (appointmentId) {
+    if (appointmentId && appointmentId !== 'none') {
       const selectedAppointment = appointments.find(a => a.id === appointmentId);
       if (selectedAppointment) {
         onSelect(selectedAppointment);
@@ -75,7 +75,7 @@ const AppointmentSelect = ({ onSelect }: AppointmentSelectProps) => {
           <SelectValue placeholder="Selecione um agendamento" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Nenhum agendamento</SelectItem>
+          <SelectItem value="none">Nenhum agendamento</SelectItem>
           {appointments.length === 0 ? (
             <div className="p-2 text-sm text-gray-500">Nenhum agendamento disponível</div>
           ) : (
@@ -88,12 +88,12 @@ const AppointmentSelect = ({ onSelect }: AppointmentSelectProps) => {
         </SelectContent>
       </Select>
       
-      {selectedAppointmentId && (
+      {selectedAppointmentId && selectedAppointmentId !== 'none' && (
         <div className="mt-4">
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => handleChange('')}
+            onClick={() => handleChange('none')}
           >
             Limpar seleção
           </Button>

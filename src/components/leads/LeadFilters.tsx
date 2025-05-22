@@ -104,7 +104,7 @@ const LeadFilters = ({ filters, onFilterChange, onClearFilters }: LeadFiltersPro
                   <SelectValue placeholder="Todas as fontes" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as fontes</SelectItem>
+                  <SelectItem value="all_sources">Todas as fontes</SelectItem>
                   <SelectItem value="google_ads">Google Ads</SelectItem>
                   <SelectItem value="meta_ads">Meta Ads</SelectItem>
                   <SelectItem value="referral">Indicação</SelectItem>
@@ -125,7 +125,7 @@ const LeadFilters = ({ filters, onFilterChange, onClearFilters }: LeadFiltersPro
                   <SelectValue placeholder="Todos os serviços" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os serviços</SelectItem>
+                  <SelectItem value="all_services">Todos os serviços</SelectItem>
                   <SelectItem value="revisao">Revisão</SelectItem>
                   <SelectItem value="troca_oleo">Troca de Óleo</SelectItem>
                   <SelectItem value="freios">Freios</SelectItem>
