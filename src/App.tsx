@@ -18,6 +18,7 @@ import Appointments from "./pages/Appointments";
 import Orders from "./pages/Orders";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Marketing from "./pages/Marketing";
 import NotFoundPage from "./pages/NotFoundPage";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/orders" element={<Orders />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/marketing" element={<Marketing />} />
           </Route>
           
           {/* Página 404 */}

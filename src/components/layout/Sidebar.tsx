@@ -40,6 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobile, setMobileMenuOpen }) => {
     { path: '/vehicles', name: 'Veículos', icon: Car },
     { path: '/appointments', name: 'Agendamentos', icon: Calendar },
     { path: '/orders', name: 'Ordens de Serviço', icon: FileText },
+    { path: '/marketing', name: 'Marketing Digital', icon: BarChart },
     { path: '/reports', name: 'Relatórios', icon: BarChart },
     { path: '/settings', name: 'Configurações', icon: Settings },
   ];
