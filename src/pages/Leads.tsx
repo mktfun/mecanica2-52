@@ -31,7 +31,7 @@ const Leads = () => {
         </Button>
       </div>
 
-      <Tabs defaultValue="kanban" className="w-full">
+      <Tabs defaultValue="list" className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="kanban">Kanban</TabsTrigger>
           <TabsTrigger value="list">Lista</TabsTrigger>

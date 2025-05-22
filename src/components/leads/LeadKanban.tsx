@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { formatDistanceToNow } from 'date-fns';
@@ -407,14 +406,14 @@ const LeadKanban = () => {
   const leadSources = Array.from(new Set(
     Object.values(columns)
       .flatMap(column => column.items)
-      .map(lead => lead.source)
+      .map(lead => lead.source || "unknown") // Ensure no empty strings
   ));
 
   // Obter todos os serviços únicos
   const leadServices = Array.from(new Set(
     Object.values(columns)
       .flatMap(column => column.items)
-      .map(lead => lead.service_interest)
+      .map(lead => lead.service_interest || "unknown") // Ensure no empty strings
   ));
 
   return (
@@ -439,7 +438,9 @@ const LeadKanban = () => {
             <SelectContent>
               <SelectItem value="">Todas as fontes</SelectItem>
               {leadSources.map((source) => (
-                <SelectItem key={source} value={source}>{source}</SelectItem>
+                <SelectItem key={source} value={source}>
+                  {source === "unknown" ? "Desconhecido" : source}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -451,7 +452,9 @@ const LeadKanban = () => {
             <SelectContent>
               <SelectItem value="">Todos os serviços</SelectItem>
               {leadServices.map((service) => (
-                <SelectItem key={service} value={service}>{service}</SelectItem>
+                <SelectItem key={service} value={service}>
+                  {service === "unknown" ? "Desconhecido" : service}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>

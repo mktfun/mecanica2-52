@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Input } from "@/components/ui/input";
 import { 
@@ -59,8 +58,8 @@ const LeadList = () => {
   };
 
   const getSourceOptions = useMemo(() => {
-    // Extrai todas as fontes únicas dos leads
-    const sources = [...new Set(leads.map(lead => lead.source))];
+    // Extrai todas as fontes únicas dos leads e garante que não haja valores vazios
+    const sources = [...new Set(leads.map(lead => lead.source || "unknown"))];
     return sources;
   }, [leads]);
 
@@ -181,8 +180,8 @@ const LeadList = () => {
             <SelectContent>
               <SelectItem value="all">Todas Fontes</SelectItem>
               {getSourceOptions.map((source) => (
-                <SelectItem key={source} value={source || "unknown"}>
-                  {source || "Desconhecido"}
+                <SelectItem key={source} value={source !== "" ? source : "unknown"}>
+                  {source !== "" ? source : "Desconhecido"}
                 </SelectItem>
               ))}
             </SelectContent>

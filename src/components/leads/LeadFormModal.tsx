@@ -58,7 +58,7 @@ const LeadFormModal = ({ lead, open, onOpenChange, onLeadAdded, onLeadUpdated }:
           vehicle_model: lead.vehicle_model,
           vehicle_year: lead.vehicle_year,
           service_interest: lead.service_interest,
-          source: lead.source,
+          source: lead.source || 'Site',  // Ensure source is never empty
           potential_value: lead.potential_value,
           assigned_to: lead.assigned_to,
           notes: lead.notes || '',
@@ -115,6 +115,8 @@ const LeadFormModal = ({ lead, open, onOpenChange, onLeadAdded, onLeadUpdated }:
       console.error('Erro ao salvar lead:', error);
     }
   };
+
+  console.log("Source options in LeadFormModal:", ["Site", "Google Ads", "Meta Ads", "Indicação", "Telefone", "WhatsApp", "Presencial"]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -234,7 +236,7 @@ const LeadFormModal = ({ lead, open, onOpenChange, onLeadAdded, onLeadUpdated }:
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Fonte do Lead*</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || "Site"}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione a fonte" />
@@ -291,7 +293,7 @@ const LeadFormModal = ({ lead, open, onOpenChange, onLeadAdded, onLeadUpdated }:
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || "new"}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione o status" />
