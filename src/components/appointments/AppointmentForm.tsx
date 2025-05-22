@@ -21,21 +21,24 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Appointment, AppointmentStatus } from '@/types/appointment';
+import { Lead } from '@/types/lead';
 import { cn } from '@/lib/utils';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, User } from 'lucide-react';
 
 interface AppointmentFormProps {
   initialData?: Partial<Appointment>;
   onSubmit: (appointment: Partial<Appointment>) => void;
   onCancel: () => void;
   checkConflicts?: (appointment: Partial<Appointment>, excludeId?: string) => boolean;
+  leads?: Lead[];
 }
 
 export function AppointmentForm({ 
   initialData, 
   onSubmit, 
   onCancel,
-  checkConflicts
+  checkConflicts,
+  leads = []
 }: AppointmentFormProps) {
   const [formData, setFormData] = useState<Partial<Appointment>>({
     client_name: '',
@@ -52,6 +55,7 @@ export function AppointmentForm({
     estimated_cost: 0
   });
   
+  const [selectedLeadId, setSelectedLeadId] = useState<string>('none');
   const [startDate, setStartDate] = useState<Date | undefined>(
     initialData?.start_time ? new Date(initialData.start_time) : undefined
   );
@@ -117,6 +121,36 @@ export function AppointmentForm({
       setEndDate(startDate);
     }
   }, [startDate, endDate]);
+
+  // Preencher dados do formulário quando um lead for selecionado
+  const handleLeadSelect = (leadId: string) => {
+    setSelectedLeadId(leadId);
+    
+    if (leadId === 'none') {
+      // Limpar campos relacionados ao cliente
+      setFormData(prev => ({
+        ...prev,
+        client_name: '',
+        phone: '',
+        email: '',
+        vehicle_info: ''
+      }));
+      return;
+    }
+    
+    const selectedLead = leads.find(lead => lead.id === leadId);
+    
+    if (selectedLead) {
+      setFormData(prev => ({
+        ...prev,
+        client_name: selectedLead.name,
+        phone: selectedLead.phone,
+        email: selectedLead.email,
+        vehicle_info: `${selectedLead.vehicle_brand} ${selectedLead.vehicle_model} (${selectedLead.vehicle_year})`,
+        service_type: selectedLead.service_interest || prev.service_type,
+      }));
+    }
+  };
 
   const handleInputChange = (field: keyof Appointment, value: any) => {
     setFormData(prev => ({
@@ -206,6 +240,29 @@ export function AppointmentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Seleção de lead */}
+      {leads && leads.length > 0 && (
+        <div className="space-y-2 border-b pb-4">
+          <Label htmlFor="lead_select">Selecionar Lead</Label>
+          <Select 
+            value={selectedLeadId} 
+            onValueChange={handleLeadSelect}
+          >
+            <SelectTrigger id="lead_select" className="w-full">
+              <SelectValue placeholder="Selecione um lead ou cliente existente" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Novo cliente</SelectItem>
+              {leads.map(lead => (
+                <SelectItem key={lead.id} value={lead.id}>
+                  {lead.name} - {lead.phone} - {lead.vehicle_brand} {lead.vehicle_model}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="client_name">Nome do Cliente</Label>

@@ -4,6 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { AppointmentForm } from './AppointmentForm';
 import { Appointment } from '@/types/appointment';
 import { useAppointments } from '@/hooks/useAppointments';
+import { Lead } from '@/types/lead';
+import { enhancedLeadsStore } from '@/core/storage/StorageService';
+import { useStorageData } from '@/hooks/useStorageData';
 
 interface CreateAppointmentDialogProps {
   selectedDate: Date;
@@ -20,6 +23,7 @@ export default function CreateAppointmentDialog({
 }: CreateAppointmentDialogProps) {
   const [open, setOpen] = useState(isOpen || false);
   const { addAppointment, checkForTimeConflicts } = useAppointments();
+  const leads = useStorageData<Lead>(enhancedLeadsStore);
   
   // Inicializar horas padrão (8:00 - 9:00)
   const defaultStartTime = new Date(selectedDate);
@@ -70,6 +74,7 @@ export default function CreateAppointmentDialog({
           onSubmit={handleSubmit} 
           onCancel={handleClose} 
           checkConflicts={checkForTimeConflicts}
+          leads={leads}
         />
       </DialogContent>
     </Dialog>
