@@ -1,6 +1,4 @@
 
-import { eventBus, EVENTS } from '../core/events/EventBus';
-
 class LocalStorageService {
   constructor(private storeName: string) {
     this.initializeStore();
@@ -46,24 +44,11 @@ class LocalStorageService {
       }
       
       // Adiciona timestamps
-      if (!item.created_at) {
-        item.created_at = new Date().toISOString();
-      }
-      if (!item.updated_at) {
-        item.updated_at = new Date().toISOString();
-      }
+      item.created_at = new Date().toISOString();
+      item.updated_at = new Date().toISOString();
       
       items.push(item);
       localStorage.setItem(this.storeName, JSON.stringify(items));
-      
-      // Emit events using the event bus
-      const entityName = this.storeName;
-      eventBus.publish(`${entityName}:created`, item);
-      eventBus.publish(EVENTS.STORAGE_UPDATED, { 
-        entity: entityName, 
-        action: 'created', 
-        item 
-      });
       
       return item;
     } catch (error) {
@@ -85,23 +70,10 @@ class LocalStorageService {
       // Mantém o ID e created_at originais
       updatedItem.id = id;
       updatedItem.created_at = items[index].created_at;
-      
-      // Atualiza o updated_at se não for especificado
-      if (!updatedItem.updated_at) {
-        updatedItem.updated_at = new Date().toISOString();
-      }
+      updatedItem.updated_at = new Date().toISOString();
       
       items[index] = updatedItem;
       localStorage.setItem(this.storeName, JSON.stringify(items));
-      
-      // Emit events using the event bus
-      const entityName = this.storeName;
-      eventBus.publish(`${entityName}:updated`, updatedItem);
-      eventBus.publish(EVENTS.STORAGE_UPDATED, { 
-        entity: entityName, 
-        action: 'updated', 
-        item: updatedItem 
-      });
       
       return updatedItem;
     } catch (error) {
@@ -114,21 +86,9 @@ class LocalStorageService {
   remove(id: string): boolean {
     try {
       const items = this.getAll();
-      const removedItem = items.find(item => item.id === id);
       const filteredItems = items.filter(item => item.id !== id);
       
       localStorage.setItem(this.storeName, JSON.stringify(filteredItems));
-      
-      // Emit events using the event bus
-      if (removedItem) {
-        const entityName = this.storeName;
-        eventBus.publish(`${entityName}:deleted`, removedItem);
-        eventBus.publish(EVENTS.STORAGE_UPDATED, { 
-          entity: entityName, 
-          action: 'deleted', 
-          item: removedItem 
-        });
-      }
       
       return true;
     } catch (error) {
@@ -168,16 +128,6 @@ class LocalStorageService {
       }
       
       localStorage.setItem(this.storeName, jsonData);
-      
-      // Emit events using the event bus
-      const entityName = this.storeName;
-      eventBus.publish(`${entityName}:imported`, { count: data.length });
-      eventBus.publish(EVENTS.STORAGE_UPDATED, { 
-        entity: entityName, 
-        action: 'imported',
-        count: data.length 
-      });
-      
       return true;
     } catch (error) {
       console.error(`Erro ao importar dados para ${this.storeName}:`, error);
@@ -195,6 +145,5 @@ export const appointmentsStore = new LocalStorageService('appointments');
 export const ordersStore = new LocalStorageService('orders');
 export const inventoryStore = new LocalStorageService('inventory');
 export const financialStore = new LocalStorageService('financial');
-export const kanbanConfigStore = new LocalStorageService('kanbanConfig');
 
 export default LocalStorageService;

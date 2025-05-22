@@ -1,20 +1,16 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Settings } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import LeadKanban from "@/components/leads/LeadKanban";
 import LeadList from "@/components/leads/LeadList";
 import LeadFormModal from "@/components/leads/LeadFormModal";
-import { useEventSubscription } from "@/hooks/useEventSubscription";
-import { EVENTS } from "@/core/events/EventBus";
-import { useApp } from "@/contexts/AppContext";
 
 const Leads = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { setIsLoading } = useApp();
 
   const handleAddLead = () => {
     setIsFormOpen(true);
@@ -24,28 +20,6 @@ const Leads = () => {
     setIsFormOpen(false);
     toast.success("Lead adicionado com sucesso!");
   };
-
-  // Subscribe to lead events for notifications
-  useEventSubscription('leads:created', (lead) => {
-    toast.success(`Novo lead criado: ${lead.name}`);
-  });
-  
-  useEventSubscription('leads:updated', (lead) => {
-    toast.info(`Lead atualizado: ${lead.name}`);
-  });
-  
-  useEventSubscription('leads:deleted', (lead) => {
-    toast.warning(`Lead removido: ${lead.name}`);
-  });
-
-  // Subscribe to storage changes to update loading state
-  useEventSubscription(EVENTS.STORAGE_UPDATED, (data) => {
-    if (data.entity === 'leads') {
-      // Just to demonstrate loading effect - in real app this might depend on API calls
-      setIsLoading(true);
-      setTimeout(() => setIsLoading(false), 300);
-    }
-  });
 
   return (
     <div className="p-6 space-y-6">
@@ -57,7 +31,7 @@ const Leads = () => {
         </Button>
       </div>
 
-      <Tabs defaultValue="list" className="w-full">
+      <Tabs defaultValue="kanban" className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="kanban">Kanban</TabsTrigger>
           <TabsTrigger value="list">Lista</TabsTrigger>

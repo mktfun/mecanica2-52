@@ -19,7 +19,7 @@ export interface Lead {
   last_interaction_at: string;
 }
 
-export type LeadStatus = string;
+export type LeadStatus = 'new' | 'contacted' | 'negotiation' | 'scheduled' | 'converted' | 'lost';
 
 export interface LeadHistory {
   id: string;
@@ -32,18 +32,9 @@ export interface LeadHistory {
   created_at: string;
 }
 
-export interface KanbanColumn {
-  id: string;
-  title: string;
-  color: string;
-  order: number;
-}
-
 export interface LeadColumn {
   id: LeadStatus;
   title: string;
-  color: string;
-  order: number;
   items: Lead[];
 }
 
