@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Card } from "@/components/ui/card";
@@ -384,24 +383,36 @@ const CustomLeadKanban = () => {
                                   draggableId={lead.id}
                                   index={index}
                                 >
-                                  {(provided, snapshot) => (
-                                    <motion.div
-                                      ref={provided.innerRef}
-                                      {...provided.draggableProps}
-                                      {...provided.dragHandleProps}
-                                      initial={{ opacity: 0, y: 20 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      exit={{ opacity: 0, scale: 0.9 }}
-                                      transition={{ duration: 0.2 }}
-                                      className={`${snapshot.isDragging ? 'rotate-2 scale-105 z-10' : ''}`}
-                                    >
-                                      <LeadKanbanCard 
-                                        lead={lead}
-                                        onDragStart={() => {}} // O Draggable já cuida disso
-                                        onClick={() => handleLeadClick(lead)}
-                                      />
-                                    </motion.div>
-                                  )}
+                                  {(provided, snapshot) => {
+                                    // Create a wrapper to handle the drag start properly
+                                    const handleItemDragStart = () => {
+                                      // This function is intentionally empty because
+                                      // react-beautiful-dnd handles the drag functionality
+                                      // The onDragStart prop here is actually not being used
+                                    };
+
+                                    return (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        className={`${snapshot.isDragging ? 'rotate-2 scale-105 z-10' : ''}`}
+                                      >
+                                        <motion.div
+                                          initial={{ opacity: 0, y: 20 }}
+                                          animate={{ opacity: 1, y: 0 }}
+                                          exit={{ opacity: 0, scale: 0.9 }}
+                                          transition={{ duration: 0.2 }}
+                                        >
+                                          <LeadKanbanCard 
+                                            lead={lead}
+                                            onDragStart={handleItemDragStart}
+                                            onClick={() => handleLeadClick(lead)}
+                                          />
+                                        </motion.div>
+                                      </div>
+                                    );
+                                  }}
                                 </Draggable>
                               ))}
                             </AnimatePresence>

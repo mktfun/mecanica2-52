@@ -1,11 +1,10 @@
-
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Lead } from '@/types/lead';
 import { motion } from 'framer-motion';
-import { Phone, Mail, Tool, Car } from 'lucide-react';
+import { Phone, Mail, Wrench, Car } from 'lucide-react';
 
 interface LeadKanbanCardProps {
   lead: Lead;
@@ -121,7 +120,7 @@ const LeadKanbanCard = ({ lead, onDragStart, onClick }: LeadKanbanCardProps) => 
           )}
           
           <div className="flex items-center text-muted-foreground">
-            <Tool className="h-3 w-3 mr-1 shrink-0" /> 
+            <Wrench className="h-3 w-3 mr-1 shrink-0" /> 
             <span className="truncate">{lead.service_interest || "Serviço não especificado"}</span>
           </div>
           
