@@ -15,13 +15,13 @@ export const appointmentService = {
   addAppointment(appointment: Omit<Appointment, 'id' | 'created_at' | 'updated_at'>): Appointment {
     // Adicionar o campo updated_at automaticamente
     const now = new Date().toISOString();
-    const appointmentWithUpdatedAt = {
+    const appointmentToAdd: Omit<Appointment, 'id' | 'created_at'> = {
       ...appointment,
       updated_at: now
     };
     
     // Agora o objeto está compatível com o tipo esperado pelo StorageService
-    return appointmentStorage.add(appointmentWithUpdatedAt as Omit<Appointment, 'id' | 'created_at'>);
+    return appointmentStorage.add(appointmentToAdd);
   },
 
   // Atualizar agendamento existente

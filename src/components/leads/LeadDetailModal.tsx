@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -285,11 +284,12 @@ const LeadDetailModal = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetail
       
       {isEditModalOpen && (
         <LeadFormModal 
-          lead={lead}
           open={isEditModalOpen}
           onOpenChange={setIsEditModalOpen}
+          lead={lead}
+          isEdit={true}
           onLeadUpdated={() => {
-            onLeadUpdated();
+            if (onLeadUpdated) onLeadUpdated();
             onOpenChange(false);
           }}
         />

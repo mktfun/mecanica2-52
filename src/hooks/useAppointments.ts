@@ -4,13 +4,12 @@ import { Appointment, AppointmentFilter } from '@/types/appointment';
 import { appointmentService } from '@/services/appointmentService';
 import { useStorageData } from './useStorageData';
 import { appointmentStorage } from '@/services/appointmentService';
-import { useToast } from './use-toast';
+import { toast } from "sonner";
 
 export function useAppointments(filter?: AppointmentFilter) {
   // Usar o hook useStorageData para obter atualização automática
   const allAppointments = useStorageData<Appointment>(appointmentStorage);
   const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
-  const { toast } = useToast();
 
   // Aplicar filtros quando os agendamentos ou os filtros mudarem
   useEffect(() => {
@@ -27,30 +26,25 @@ export function useAppointments(filter?: AppointmentFilter) {
     try {
       // Verificar conflitos de horário
       if (appointmentService.checkForTimeConflicts(appointment)) {
-        toast({
-          title: "Conflito de horário",
-          description: "Já existe um agendamento para este mecânico neste horário",
-          variant: "destructive"
+        toast.error("Conflito de horário", {
+          description: "Já existe um agendamento para este mecânico neste horário"
         });
         return null;
       }
 
       const newAppointment = appointmentService.addAppointment(appointment);
-      toast({
-        title: "Agendamento criado",
+      toast.success("Agendamento criado", {
         description: "O agendamento foi criado com sucesso"
       });
       return newAppointment;
     } catch (error) {
       console.error("Erro ao criar agendamento:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível criar o agendamento",
-        variant: "destructive"
+      toast.error("Erro", {
+        description: "Não foi possível criar o agendamento"
       });
       return null;
     }
-  }, [toast]);
+  }, []);
 
   // Função para atualizar um agendamento existente
   const updateAppointment = useCallback((id: string, updates: Partial<Appointment>) => {
@@ -58,30 +52,25 @@ export function useAppointments(filter?: AppointmentFilter) {
       // Verificar conflitos de horário (excluindo o próprio agendamento)
       if ((updates.start_time || updates.end_time || updates.mechanic_name) && 
           appointmentService.checkForTimeConflicts(updates, id)) {
-        toast({
-          title: "Conflito de horário",
-          description: "Já existe um agendamento para este mecânico neste horário",
-          variant: "destructive"
+        toast.error("Conflito de horário", {
+          description: "Já existe um agendamento para este mecânico neste horário"
         });
         return null;
       }
 
       const updatedAppointment = appointmentService.updateAppointment(id, updates);
-      toast({
-        title: "Agendamento atualizado",
+      toast.success("Agendamento atualizado", {
         description: "As alterações foram salvas com sucesso"
       });
       return updatedAppointment;
     } catch (error) {
       console.error("Erro ao atualizar agendamento:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o agendamento",
-        variant: "destructive"
+      toast.error("Erro", {
+        description: "Não foi possível atualizar o agendamento"
       });
       return null;
     }
-  }, [toast]);
+  }, []);
 
   // Função para atualizar o status de um agendamento
   const updateAppointmentStatus = useCallback((id: string, status: Appointment['status']) => {
@@ -89,25 +78,22 @@ export function useAppointments(filter?: AppointmentFilter) {
       const updatedAppointment = appointmentService.updateAppointmentStatus(id, status);
       
       if (updatedAppointment) {
-        toast({
-          title: "Status atualizado",
+        toast.success("Status atualizado", {
           description: `O agendamento foi marcado como ${status === 'scheduled' ? 'agendado' : 
-                                                         status === 'in-progress' ? 'em andamento' : 
-                                                         status === 'completed' ? 'concluído' : 'cancelado'}`
+                                                        status === 'in-progress' ? 'em andamento' : 
+                                                        status === 'completed' ? 'concluído' : 'cancelado'}`
         });
       }
       
       return updatedAppointment;
     } catch (error) {
       console.error("Erro ao atualizar status:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o status",
-        variant: "destructive"
+      toast.error("Erro", {
+        description: "Não foi possível atualizar o status"
       });
       return null;
     }
-  }, [toast]);
+  }, []);
 
   // Função para remover um agendamento
   const removeAppointment = useCallback((id: string) => {
@@ -115,8 +101,7 @@ export function useAppointments(filter?: AppointmentFilter) {
       const result = appointmentService.removeAppointment(id);
       
       if (result) {
-        toast({
-          title: "Agendamento removido",
+        toast.success("Agendamento removido", {
           description: "O agendamento foi removido com sucesso"
         });
       }
@@ -124,14 +109,12 @@ export function useAppointments(filter?: AppointmentFilter) {
       return result;
     } catch (error) {
       console.error("Erro ao remover agendamento:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível remover o agendamento",
-        variant: "destructive"
+      toast.error("Erro", {
+        description: "Não foi possível remover o agendamento"
       });
       return false;
     }
-  }, [toast]);
+  }, []);
 
   // Obter agendamentos para uma data específica
   const getAppointmentsForDate = useCallback((date: Date) => {

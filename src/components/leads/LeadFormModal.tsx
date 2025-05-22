@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +10,13 @@ import { enhancedLeadsStore } from '@/core/storage/StorageService';
 import { toast } from "sonner";
 import { formatCurrency } from "@/utils/formatters";
 
-interface LeadFormModalProps {
+export interface LeadFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaved?: () => void;
+  onLeadAdded?: () => void;
+  onLeadUpdated?: () => void;
   initialData?: Lead;
+  lead?: Lead;
   isEdit?: boolean;
 }
 
@@ -37,19 +38,21 @@ const DEFAULT_LEAD: Partial<Lead> = {
 export function LeadFormModal({
   open,
   onOpenChange,
-  onSaved,
+  onLeadAdded,
+  onLeadUpdated,
   initialData,
+  lead,
   isEdit = false
 }: LeadFormModalProps) {
   const [formData, setFormData] = useState<Partial<Lead>>(DEFAULT_LEAD);
 
   useEffect(() => {
-    if (initialData && open) {
-      setFormData(initialData);
-    } else if (!isEdit && !initialData && open) {
+    if ((initialData || lead) && open) {
+      setFormData(initialData || lead || DEFAULT_LEAD);
+    } else if (!isEdit && !(initialData || lead) && open) {
       setFormData(DEFAULT_LEAD);
     }
-  }, [initialData, open, isEdit]);
+  }, [initialData, lead, open, isEdit]);
 
   const handleChange = (field: keyof Lead, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -69,13 +72,14 @@ export function LeadFormModal({
         return;
       }
       
-      if (isEdit && initialData?.id) {
+      if (isEdit && (initialData?.id || lead?.id)) {
         // Atualizar lead existente
-        enhancedLeadsStore.update(initialData.id, {
+        enhancedLeadsStore.update(initialData?.id || lead?.id || '', {
           ...formData,
           updated_at: new Date().toISOString(),
         } as Lead);
         toast.success("Lead atualizado com sucesso!");
+        if (onLeadUpdated) onLeadUpdated();
       } else {
         // Adicionar novo lead
         enhancedLeadsStore.add({
@@ -84,10 +88,10 @@ export function LeadFormModal({
           last_interaction_at: new Date().toISOString(),
         } as Omit<Lead, 'id' | 'created_at'>);
         toast.success("Lead adicionado com sucesso!");
+        if (onLeadAdded) onLeadAdded();
       }
       
       onOpenChange(false);
-      if (onSaved) onSaved();
     } catch (error) {
       console.error('Erro ao salvar lead:', error);
       toast.error("Erro ao salvar o lead");

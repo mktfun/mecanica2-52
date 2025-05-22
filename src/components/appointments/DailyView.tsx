@@ -5,7 +5,7 @@ import AppointmentCard from './AppointmentCard';
 import AppointmentDetailsDialog from './AppointmentDetailsDialog';
 import CreateAppointmentDialog from './CreateAppointmentDialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 import { useAppointments } from '@/hooks/useAppointments';
 import { Appointment } from '@/types/appointment';
 
@@ -26,7 +26,6 @@ const DailyView: React.FC<DailyViewProps> = ({ selectedDate }) => {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isNewAppointmentDialogOpen, setIsNewAppointmentDialogOpen] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<Date | null>(null);
-  const { toast } = useToast();
   const { getAppointmentsForDate } = useAppointments();
   
   // Array de horas do dia de funcionamento
@@ -48,11 +47,7 @@ const DailyView: React.FC<DailyViewProps> = ({ selectedDate }) => {
       setAppointments(fetchedAppointments);
     } catch (error) {
       console.error('Erro ao carregar agendamentos:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar os agendamentos. Tente novamente mais tarde.',
-        variant: 'destructive'
-      });
+      toast.error('Não foi possível carregar os agendamentos. Tente novamente mais tarde.');
     } finally {
       setIsLoading(false);
     }
