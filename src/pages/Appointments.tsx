@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, ListFilter, Grid3X3, LayoutList } from 'lucide-react';
+import { Calendar, ListFilter, Grid3X3, LayoutList, Plus } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import DailyView from '@/components/appointments/DailyView';
 import WeeklyView from '@/components/appointments/WeeklyView';
@@ -10,10 +10,17 @@ import MonthlyView from '@/components/appointments/MonthlyView';
 import ListViewAppointments from '@/components/appointments/ListView';
 import CreateAppointmentDialog from '@/components/appointments/CreateAppointmentDialog';
 import { Button } from '@/components/ui/button';
+import { AppointmentFilter } from '@/types/appointment';
+import { useAppointments } from '@/hooks/useAppointments';
 
 const Appointments = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [view, setView] = useState<'day' | 'week' | 'month' | 'list'>('week');
+  const [filter, setFilter] = useState<AppointmentFilter>({});
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  
+  // Usar hook para acessar agendamentos com atualização automática
+  const { appointments } = useAppointments(filter);
   
   const handlePreviousDate = () => {
     const newDate = new Date(selectedDate);
@@ -68,6 +75,11 @@ const Appointments = () => {
       return "Todos os agendamentos";
     }
   };
+
+  const handleAppointmentCreated = () => {
+    // Não precisamos recarregar os dados manualmente pois o hook useStorageData 
+    // atualiza automaticamente quando os dados mudam
+  };
   
   return (
     <div className="p-6 space-y-6">
@@ -78,9 +90,10 @@ const Appointments = () => {
         </div>
         
         <div className="flex gap-2">
-          <CreateAppointmentDialog 
-            selectedDate={selectedDate}
-          />
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Agendamento
+          </Button>
         </div>
       </div>
       
@@ -117,6 +130,7 @@ const Appointments = () => {
               size="sm" 
               onClick={handlePreviousDate}
               className="px-2"
+              disabled={view === 'list'}
             >
               &lt;
             </Button>
@@ -126,6 +140,7 @@ const Appointments = () => {
               size="sm" 
               onClick={handleToday}
               className="px-2 text-xs whitespace-nowrap"
+              disabled={view === 'list'}
             >
               Hoje
             </Button>
@@ -139,17 +154,27 @@ const Appointments = () => {
               size="sm" 
               onClick={handleNextDate}
               className="px-2"
+              disabled={view === 'list'}
             >
               &gt;
             </Button>
           </div>
         </div>
         
-        {view === 'day' && <DailyView selectedDate={selectedDate} />}
-        {view === 'week' && <WeeklyView selectedDate={selectedDate} />}
-        {view === 'month' && <MonthlyView selectedDate={selectedDate} setSelectedDate={setSelectedDate} />}
-        {view === 'list' && <ListViewAppointments />}
+        <div>
+          {view === 'day' && <DailyView selectedDate={selectedDate} />}
+          {view === 'week' && <WeeklyView selectedDate={selectedDate} />}
+          {view === 'month' && <MonthlyView selectedDate={selectedDate} setSelectedDate={setSelectedDate} />}
+          {view === 'list' && <ListViewAppointments />}
+        </div>
       </div>
+
+      <CreateAppointmentDialog
+        selectedDate={selectedDate}
+        isOpen={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+        onCreated={handleAppointmentCreated}
+      />
     </div>
   );
 };

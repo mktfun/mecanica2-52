@@ -1,116 +1,73 @@
 
 import React from 'react';
-import { format, parseISO } from 'date-fns';
+import { Appointment } from '@/types/appointment';
+import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface AppointmentCardProps {
-  appointment: {
-    id: string;
-    client_name: string;
-    vehicle_info: string;
-    service_type: string;
-    start_time: string;
-    end_time: string;
-    mechanic_name: string;
-    status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
-  };
+  appointment: Appointment;
   onClick: () => void;
   condensed?: boolean;
 }
 
-const AppointmentCard: React.FC<AppointmentCardProps> = ({ 
-  appointment, 
-  onClick,
-  condensed = false
-}) => {
-  const getStatusClass = () => {
-    switch (appointment.status) {
-      case 'scheduled':
-        return 'border-blue-500 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/20';
-      case 'in-progress':
-        return 'border-yellow-500 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900/20';
-      case 'completed':
-        return 'border-green-500 bg-green-50 dark:border-green-700 dark:bg-green-900/20';
-      case 'cancelled':
-        return 'border-gray-500 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/40';
-      default:
-        return 'border-blue-500 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/20';
-    }
+export default function AppointmentCard({ appointment, onClick, condensed = false }: AppointmentCardProps) {
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return format(date, 'HH:mm', { locale: ptBR });
   };
   
-  const getStatusText = () => {
-    switch (appointment.status) {
+  const getStatusClass = (status: Appointment['status']) => {
+    switch (status) {
       case 'scheduled':
-        return 'Agendado';
+        return 'border-blue-400 bg-blue-50 dark:bg-blue-900/20';
       case 'in-progress':
-        return 'Em andamento';
+        return 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20';
       case 'completed':
-        return 'Concluído';
+        return 'border-green-400 bg-green-50 dark:bg-green-900/20';
       case 'cancelled':
-        return 'Cancelado';
+        return 'border-red-400 bg-red-50 dark:bg-red-900/20';
       default:
-        return 'Agendado';
+        return 'border-gray-300';
     }
   };
-  
-  const startTime = parseISO(appointment.start_time);
-  const endTime = parseISO(appointment.end_time);
-  
-  if (condensed) {
-    return (
-      <div 
-        className={`appointment-card ${getStatusClass()} text-xs p-1 border-l-2 rounded mb-1 cursor-pointer hover:opacity-90 transition-opacity`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick();
-        }}
-      >
-        <div className="font-medium truncate">
-          {appointment.client_name}
-        </div>
-        <div className="truncate text-gray-600 dark:text-gray-400">
-          {appointment.service_type}
-        </div>
-      </div>
-    );
-  }
   
   return (
     <div 
-      className={`appointment-card ${getStatusClass()} p-2 border-l-2 rounded-md shadow-sm cursor-pointer hover:shadow-md transition-shadow`}
+      className={cn(
+        "border-l-4 rounded-md p-3 mb-2 cursor-pointer hover:shadow-md transition-shadow",
+        getStatusClass(appointment.status),
+        condensed ? "px-2 py-1" : ""
+      )}
       onClick={onClick}
     >
-      <div className="flex justify-between items-start mb-1">
-        <div className="font-medium">
-          {format(startTime, 'HH:mm')} - {format(endTime, 'HH:mm')}
+      {condensed ? (
+        <div className="space-y-1">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-medium">{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+          </div>
+          <div className="text-sm font-medium truncate">{appointment.client_name}</div>
+          <div className="text-xs truncate">{appointment.service_type}</div>
         </div>
-        <div className={`text-xs px-1.5 py-0.5 rounded-full ${
-          appointment.status === 'scheduled' ? 'bg-blue-200 dark:bg-blue-800/50 text-blue-800 dark:text-blue-300' :
-          appointment.status === 'in-progress' ? 'bg-yellow-200 dark:bg-yellow-800/50 text-yellow-800 dark:text-yellow-300' :
-          appointment.status === 'completed' ? 'bg-green-200 dark:bg-green-800/50 text-green-800 dark:text-green-300' :
-          'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-        }`}>
-          {getStatusText()}
+      ) : (
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+          </div>
+          <div className="text-base font-medium">{appointment.client_name}</div>
+          <div>
+            <div className="text-sm truncate">
+              <span className="font-medium">Veículo:</span> {appointment.vehicle_info}
+            </div>
+            <div className="text-sm truncate">
+              <span className="font-medium">Serviço:</span> {appointment.service_type}
+            </div>
+            <div className="text-sm">
+              <span className="font-medium">Mecânico:</span> {appointment.mechanic_name}
+            </div>
+          </div>
         </div>
-      </div>
-      
-      <div className="text-sm font-medium mb-1">
-        {appointment.client_name}
-      </div>
-      
-      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-        {appointment.vehicle_info}
-      </div>
-      
-      <div className="text-sm font-medium">
-        {appointment.service_type}
-      </div>
-      
-      <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-        Mecânico: {appointment.mechanic_name}
-      </div>
+      )}
     </div>
   );
-};
-
-export default AppointmentCard;
+}

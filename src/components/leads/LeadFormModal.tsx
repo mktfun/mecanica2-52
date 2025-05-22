@@ -1,354 +1,269 @@
-import React from 'react';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
 
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState, useEffect } from "react";
+import { Lead, LeadStatus } from "@/types/lead";
 import { enhancedLeadsStore } from '@/core/storage/StorageService';
-import { Lead } from '@/types/lead';
+import { toast } from "sonner";
+import { formatCurrency } from "@/utils/formatters";
 
 interface LeadFormModalProps {
-  lead?: Lead;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onLeadAdded?: () => void;
-  onLeadUpdated?: () => void;
+  onSaved?: () => void;
+  initialData?: Lead;
+  isEdit?: boolean;
 }
 
-const leadFormSchema = z.object({
-  name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
-  phone: z.string().min(10, 'Telefone inválido'),
-  email: z.string().email('Email inválido').or(z.string().length(0)),
-  vehicle_brand: z.string().min(2, 'Informe a marca do veículo'),
-  vehicle_model: z.string().min(2, 'Informe o modelo do veículo'),
-  vehicle_year: z.string().regex(/^\d{4}$/, 'Ano deve conter 4 dígitos'),
-  service_interest: z.string().min(3, 'Informe o serviço de interesse'),
-  source: z.string().min(2, 'Informe a fonte do lead'),
-  potential_value: z.coerce.number().min(0, 'Valor deve ser positivo'),
-  assigned_to: z.string().min(2, 'Informe o responsável pelo lead'),
-  notes: z.string().optional(),
-  status: z.string().default('new')
-});
+const DEFAULT_LEAD: Partial<Lead> = {
+  name: '',
+  email: '',
+  phone: '',
+  vehicle_brand: '',
+  vehicle_model: '',
+  vehicle_year: '',
+  service_interest: '',
+  source: 'direct',
+  potential_value: 0,
+  assigned_to: '',
+  status: 'new',
+  notes: '',
+};
 
-type LeadFormValues = z.infer<typeof leadFormSchema>;
+export function LeadFormModal({
+  open,
+  onOpenChange,
+  onSaved,
+  initialData,
+  isEdit = false
+}: LeadFormModalProps) {
+  const [formData, setFormData] = useState<Partial<Lead>>(DEFAULT_LEAD);
 
-const LeadFormModal = ({ lead, open, onOpenChange, onLeadAdded, onLeadUpdated }: LeadFormModalProps) => {
-  const isEditing = !!lead;
+  useEffect(() => {
+    if (initialData && open) {
+      setFormData(initialData);
+    } else if (!isEdit && !initialData && open) {
+      setFormData(DEFAULT_LEAD);
+    }
+  }, [initialData, open, isEdit]);
 
-  const form = useForm<LeadFormValues>({
-    resolver: zodResolver(leadFormSchema),
-    defaultValues: isEditing
-      ? {
-          name: lead.name,
-          phone: lead.phone,
-          email: lead.email || '',
-          vehicle_brand: lead.vehicle_brand,
-          vehicle_model: lead.vehicle_model,
-          vehicle_year: lead.vehicle_year,
-          service_interest: lead.service_interest,
-          source: lead.source,
-          potential_value: lead.potential_value,
-          assigned_to: lead.assigned_to,
-          notes: lead.notes || '',
-          status: lead.status,
-        }
-      : {
-          name: '',
-          phone: '',
-          email: '',
-          vehicle_brand: '',
-          vehicle_model: '',
-          vehicle_year: new Date().getFullYear().toString(),
-          service_interest: '',
-          source: 'Site',
-          potential_value: 0,
-          assigned_to: '',
-          notes: '',
-          status: 'new',
-        }
-  });
+  const handleChange = (field: keyof Lead, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
-  const handleSubmit = (formData) => {
-    // Make sure the status is properly typed as LeadStatus
-    const leadData = {
-      ...formData,
-      status: formData.status as LeadStatus,
-    };
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     
     try {
-      const now = new Date().toISOString();
-      
-      if (isEditing && lead) {
-        // Atualizar lead existente com serviço aprimorado
-        const updatedLead = {
-          ...lead,
-          ...leadData,
-          updated_at: now,
-        };
-        
-        enhancedLeadsStore.update(lead.id, updatedLead);
-        onOpenChange(false);
-        onLeadUpdated?.();
-      } else {
-        // Criar novo lead com serviço aprimorado
-        const newLead = {
-          ...leadData,
-          id: '', // Será gerado pelo StorageService
-          created_at: now,
-          updated_at: now,
-          status_changed_at: now,
-          last_interaction_at: now,
-        } as Lead;
-        
-        enhancedLeadsStore.add(newLead);
-        form.reset();
-        onOpenChange(false);
-        onLeadAdded?.();
+      if (!formData.name?.trim()) {
+        toast.error("Nome é obrigatório");
+        return;
       }
+      
+      if (!formData.phone?.trim()) {
+        toast.error("Telefone é obrigatório");
+        return;
+      }
+      
+      if (isEdit && initialData?.id) {
+        // Atualizar lead existente
+        enhancedLeadsStore.update(initialData.id, {
+          ...formData,
+          updated_at: new Date().toISOString(),
+        } as Lead);
+        toast.success("Lead atualizado com sucesso!");
+      } else {
+        // Adicionar novo lead
+        enhancedLeadsStore.add({
+          ...formData,
+          status_changed_at: new Date().toISOString(),
+          last_interaction_at: new Date().toISOString(),
+        } as Omit<Lead, 'id' | 'created_at'>);
+        toast.success("Lead adicionado com sucesso!");
+      }
+      
+      onOpenChange(false);
+      if (onSaved) onSaved();
     } catch (error) {
       console.error('Erro ao salvar lead:', error);
+      toast.error("Erro ao salvar o lead");
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Editar Lead' : 'Cadastrar Novo Lead'}</DialogTitle>
+          <DialogTitle>{isEdit ? 'Editar Lead' : 'Novo Lead'}</DialogTitle>
+          <DialogDescription>
+            {isEdit 
+              ? 'Atualize as informações do lead existente.' 
+              : 'Preencha os dados para cadastrar um novo lead no sistema.'}
+          </DialogDescription>
         </DialogHeader>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome*</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nome completo" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Nome</Label>
+                <Input
+                  id="name"
+                  value={formData.name || ''}
+                  onChange={(e) => handleChange('name', e.target.value)}
+                  placeholder="Nome completo"
+                />
+              </div>
               
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Telefone*</FormLabel>
-                    <FormControl>
-                      <Input placeholder="(00) 00000-0000" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid gap-2">
+                <Label htmlFor="phone">Telefone</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone || ''}
+                  onChange={(e) => handleChange('phone', e.target.value)}
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email || ''}
+                  onChange={(e) => handleChange('email', e.target.value)}
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="potential_value">Valor Potencial</Label>
+                <Input
+                  id="potential_value"
+                  type="number"
+                  value={formData.potential_value || 0}
+                  onChange={(e) => handleChange('potential_value', parseFloat(e.target.value))}
+                  placeholder="R$ 0,00"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="vehicle_brand">Marca do Veículo</Label>
+                <Input
+                  id="vehicle_brand"
+                  value={formData.vehicle_brand || ''}
+                  onChange={(e) => handleChange('vehicle_brand', e.target.value)}
+                  placeholder="Marca"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="vehicle_model">Modelo do Veículo</Label>
+                <Input
+                  id="vehicle_model"
+                  value={formData.vehicle_model || ''}
+                  onChange={(e) => handleChange('vehicle_model', e.target.value)}
+                  placeholder="Modelo"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="vehicle_year">Ano do Veículo</Label>
+                <Input
+                  id="vehicle_year"
+                  value={formData.vehicle_year || ''}
+                  onChange={(e) => handleChange('vehicle_year', e.target.value)}
+                  placeholder="Ano"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="service_interest">Serviço de Interesse</Label>
+                <Input
+                  id="service_interest"
+                  value={formData.service_interest || ''}
+                  onChange={(e) => handleChange('service_interest', e.target.value)}
+                  placeholder="Serviço"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="source">Fonte</Label>
+                <Select 
+                  value={formData.source || 'direct'} 
+                  onValueChange={(value) => handleChange('source', value)}
+                >
+                  <SelectTrigger id="source">
+                    <SelectValue placeholder="Selecione a fonte" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="direct">Direto</SelectItem>
+                    <SelectItem value="google_ads">Google Ads</SelectItem>
+                    <SelectItem value="meta_ads">Meta Ads</SelectItem>
+                    <SelectItem value="referral">Indicação</SelectItem>
+                    <SelectItem value="website">Website</SelectItem>
+                    <SelectItem value="phone">Telefone</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="assigned_to">Atribuído a</Label>
+                <Input
+                  id="assigned_to"
+                  value={formData.assigned_to || ''}
+                  onChange={(e) => handleChange('assigned_to', e.target.value)}
+                  placeholder="Responsável"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="status">Status</Label>
+                <Select 
+                  value={formData.status as string || 'new'} 
+                  onValueChange={(value) => handleChange('status', value as LeadStatus)}
+                >
+                  <SelectTrigger id="status">
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">Novo</SelectItem>
+                    <SelectItem value="contacted">Contatado</SelectItem>
+                    <SelectItem value="negotiation">Em Negociação</SelectItem>
+                    <SelectItem value="scheduled">Agendado</SelectItem>
+                    <SelectItem value="converted">Convertido</SelectItem>
+                    <SelectItem value="lost">Perdido</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="grid gap-2 sm:col-span-2">
+                <Label htmlFor="notes">Observações</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes || ''}
+                  onChange={(e) => handleChange('notes', e.target.value)}
+                  placeholder="Observações sobre o lead"
+                  rows={3}
+                />
+              </div>
             </div>
-            
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>E-mail</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="email@exemplo.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="vehicle_brand"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Marca do Veículo*</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Toyota" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="vehicle_model"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Modelo*</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Corolla" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="vehicle_year"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ano*</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: 2023" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            <FormField
-              control={form.control}
-              name="service_interest"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Serviço de Interesse*</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: Revisão completa" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="source"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fonte do Lead*</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a fonte" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Site">Site</SelectItem>
-                        <SelectItem value="Google Ads">Google Ads</SelectItem>
-                        <SelectItem value="Meta Ads">Meta Ads</SelectItem>
-                        <SelectItem value="Indicação">Indicação</SelectItem>
-                        <SelectItem value="Telefone">Telefone</SelectItem>
-                        <SelectItem value="WhatsApp">WhatsApp</SelectItem>
-                        <SelectItem value="Presencial">Presencial</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="potential_value"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Valor Potencial (R$)</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="0" step="0.01" placeholder="0,00" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="assigned_to"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Responsável*</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nome do responsável" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            {isEditing && (
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="new">Novo Lead</SelectItem>
-                        <SelectItem value="contacted">Primeiro Contato</SelectItem>
-                        <SelectItem value="negotiation">Em Negociação</SelectItem>
-                        <SelectItem value="scheduled">Agendado</SelectItem>
-                        <SelectItem value="converted">Convertido</SelectItem>
-                        <SelectItem value="lost">Perdido</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-            
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Observações</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Informações adicionais sobre o lead" 
-                      className="min-h-[100px]" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit">
-                {isEditing ? 'Salvar Alterações' : 'Cadastrar Lead'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+          </div>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit">
+              {isEdit ? 'Atualizar Lead' : 'Adicionar Lead'}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
-};
-
-export default LeadFormModal;
+}
