@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -81,7 +80,13 @@ const LeadFormModal = ({ lead, open, onOpenChange, onLeadAdded, onLeadUpdated }:
         }
   });
 
-  const handleSubmit = (values: LeadFormValues) => {
+  const handleSubmit = (formData) => {
+    // Make sure the status is properly typed as LeadStatus
+    const leadData = {
+      ...formData,
+      status: formData.status as LeadStatus,
+    };
+    
     try {
       const now = new Date().toISOString();
       
@@ -89,7 +94,7 @@ const LeadFormModal = ({ lead, open, onOpenChange, onLeadAdded, onLeadUpdated }:
         // Atualizar lead existente com serviço aprimorado
         const updatedLead = {
           ...lead,
-          ...values,
+          ...leadData,
           updated_at: now,
         };
         
@@ -99,7 +104,7 @@ const LeadFormModal = ({ lead, open, onOpenChange, onLeadAdded, onLeadUpdated }:
       } else {
         // Criar novo lead com serviço aprimorado
         const newLead = {
-          ...values,
+          ...leadData,
           id: '', // Será gerado pelo StorageService
           created_at: now,
           updated_at: now,

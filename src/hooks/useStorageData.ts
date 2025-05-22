@@ -22,7 +22,7 @@ export function useStorageData<T extends BaseEntity>(
     
     // Inscrever para atualizações
     const unsubscribe = eventBus.subscribe(EVENTS.STORAGE_UPDATED, (event) => {
-      if (event.entity === storageService.storageKey) {
+      if (event.entity === storageService.getStorageKey()) {
         loadData();
       }
     });

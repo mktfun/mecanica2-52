@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { KanbanColumn } from '@/hooks/useKanbanColumns';
 
 interface KanbanColumnDialogProps {
@@ -20,7 +20,6 @@ const KanbanColumnDialog = ({
   onSave,
   column
 }: KanbanColumnDialogProps) => {
-  const { toast } = useToast();
   const [title, setTitle] = useState(column?.title || '');
   const [color, setColor] = useState(column?.color || '#e6f7ff');
 
@@ -28,11 +27,7 @@ const KanbanColumnDialog = ({
     e.preventDefault();
     
     if (!title.trim()) {
-      toast({
-        title: "Título obrigatório",
-        description: "Por favor, informe um título para a coluna.",
-        variant: "destructive"
-      });
+      toast.error("Título obrigatório. Por favor, informe um título para a coluna.");
       return;
     }
     

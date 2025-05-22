@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Card } from "@/components/ui/card";
@@ -7,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Plus, Edit2, Trash2, MoreHorizontal, AlertCircle } from "lucide-react";
 import { enhancedLeadsStore } from '@/core/storage/StorageService';
-import { Lead } from '@/types/lead';
+import { Lead, LeadStatus } from '@/types/lead';
 import { useStorageData } from '@/hooks/useStorageData';
 import { useKanbanColumns, KanbanColumn } from '@/hooks/useKanbanColumns';
 import KanbanColumnDialog from './KanbanColumnDialog';
@@ -169,7 +168,7 @@ const CustomLeadKanban = () => {
       // Atualizar o status do lead
       const updatedLead = {
         ...lead,
-        status: destination.droppableId,
+        status: destination.droppableId as LeadStatus,
         status_changed_at: new Date().toISOString()
       };
       
@@ -205,7 +204,7 @@ const CustomLeadKanban = () => {
         for (const lead of leadsInColumn) {
           enhancedLeadsStore.update(lead.id, {
             ...lead,
-            status: fallbackColumn.id,
+            status: fallbackColumn.id as LeadStatus,
             status_changed_at: new Date().toISOString()
           });
         }

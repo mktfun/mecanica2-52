@@ -19,6 +19,7 @@ export interface Lead {
   last_interaction_at: string;
 }
 
+// Make sure this is properly defined and exported
 export type LeadStatus = 'new' | 'contacted' | 'negotiation' | 'scheduled' | 'converted' | 'lost';
 
 export interface LeadHistory {

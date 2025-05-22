@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { eventBus, EVENTS } from '../core/events/EventBus';
+import { LeadStatus } from '@/types/lead';
 
 export interface KanbanColumn {
-  id: string;
+  id: string; // This can be a custom ID or a LeadStatus value
   title: string;
   color: string;
   order: number;
@@ -67,9 +67,10 @@ export function useKanbanColumns() {
   };
 
   const addColumn = (newColumn: Omit<KanbanColumn, 'id' | 'order'>) => {
+    const columnId = `column-${Date.now()}`;
     const columnToAdd = {
       ...newColumn,
-      id: `column-${Date.now()}`,
+      id: columnId,
       order: columns.length
     };
 

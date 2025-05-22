@@ -1,4 +1,3 @@
-
 import { eventBus, EVENTS } from '../events/EventBus';
 
 // Interface para entidades base
@@ -10,12 +9,17 @@ export interface BaseEntity {
 
 // Classe genérica para gerenciar armazenamento local
 export class StorageService<T extends BaseEntity> {
-  private storageKey: string;
+  private readonly storageKey: string;
   private cache: T[] | null = null;
 
   constructor(entityName: string) {
     this.storageKey = `mecanicapro_${entityName}`;
     this.initializeStore();
+  }
+
+  // Getter para o storageKey
+  getStorageKey(): string {
+    return this.storageKey;
   }
 
   // Inicializa o armazenamento se não existir
