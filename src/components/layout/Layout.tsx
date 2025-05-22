@@ -18,7 +18,10 @@ const Layout = () => {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
       {/* Sidebar */}
-      <Sidebar isMobile={false} setMobileMenuOpen={setMobileMenuOpen} />
+      <Sidebar isMobile={false} setMobileMenuOpen={setMobileMenuOpen}>
+        {/* This empty fragment serves as the children prop */}
+        <></>
+      </Sidebar>
       
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header setMobileMenuOpen={setMobileMenuOpen} />
