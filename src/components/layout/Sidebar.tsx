@@ -38,7 +38,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobile, setMobileMenuOpen }) => {
     { path: '/leads', name: 'Leads', icon: Users },
     { path: '/clients', name: 'Clientes', icon: Users },
     { path: '/vehicles', name: 'Veículos', icon: Car },
-    { path: '/appointments', name: 'Agendamentos', icon: Calendar },
+    { 
+      path: '/appointments', 
+      name: 'Agendamentos', 
+      icon: Calendar,
+      notification: 3, // Notificação simulada para agendamentos
+    },
     { path: '/orders', name: 'Ordens de Serviço', icon: FileText },
     { path: '/marketing', name: 'Marketing Digital', icon: BarChart },
     { path: '/reports', name: 'Relatórios', icon: BarChart },
@@ -72,7 +77,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobile, setMobileMenuOpen }) => {
                 onClick={handleNavClick}
               >
                 <item.icon className="h-5 w-5" />
-                <span>{item.name}</span>
+                <span className="flex-1">{item.name}</span>
+                {item.notification && (
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-xs font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
+                    {item.notification}
+                  </span>
+                )}
               </NavLink>
             </li>
           ))}
