@@ -68,6 +68,7 @@ const appSettingsSchema = z.object({
 
 const AppSettings = () => {
   const { settings, saveSection, loading, exportSettings, importSettings, backupSettings, restoreFromBackup } = useSettings('app');
+  // Explicitly cast settings to AppSettingsType
   const appSettings = settings as AppSettingsType;
   const [file, setFile] = useState<File | null>(null);
   const [backupData, setBackupData] = useState<string | null>(null);
@@ -96,7 +97,15 @@ const AppSettings = () => {
   // Form para configurações do aplicativo
   const form = useForm<z.infer<typeof appSettingsSchema>>({
     resolver: zodResolver(appSettingsSchema),
-    defaultValues: appSettings || defaultAppSettings
+    defaultValues: {
+      theme: appSettings?.theme || defaultAppSettings.theme,
+      display: {
+        ...defaultAppSettings.display,
+        ...appSettings?.display,
+        timeFormat: (appSettings?.display?.timeFormat as '12h' | '24h') || '24h'
+      },
+      security: appSettings?.security || defaultAppSettings.security
+    }
   });
 
   // Handler para submissão do formulário

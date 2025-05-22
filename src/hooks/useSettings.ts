@@ -127,8 +127,11 @@ export const useSettings = <K extends keyof Settings>(section?: K) => {
     }
   };
 
+  // If a specific section is requested, properly cast it to the expected type
+  const sectionData = section ? settings[section] : settings;
+
   return {
-    settings: section ? settings[section] : settings,
+    settings: sectionData,
     allSettings: settings,
     loading,
     error,

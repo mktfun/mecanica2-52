@@ -60,12 +60,12 @@ const Register = () => {
         permissions = ['read:leads', 'write:leads', 'read:campaigns', 'write:campaigns'];
       }
       
+      // Fixing the register call to match the expected type
       await authService.register({
         name,
         email,
-        password,
         role: role as any,
-        permissions,
+        password, // now password is included in the User interface
         active: true
       });
       

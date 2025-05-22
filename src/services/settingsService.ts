@@ -117,12 +117,13 @@ class SettingsService {
     
     if (settings.length === 0) {
       const now = new Date().toISOString();
-      this.settingsStore.add({
+      const settingsToStore: BaseSettings = {
         id: 'default',
-        ...this.defaultSettings,
         created_at: now,
-        updated_at: now
-      } as unknown as BaseSettings);
+        updated_at: now,
+        ...this.defaultSettings
+      };
+      this.settingsStore.add(settingsToStore);
     }
   }
 
@@ -134,7 +135,15 @@ class SettingsService {
       if (settings.length === 0) {
         return this.defaultSettings;
       }
-      return settings[0] as unknown as Settings;
+      
+      // Extract the settings data from the BaseSettings object
+      const { id, created_at, updated_at, ...actualSettings } = settings[0];
+      
+      // Merge with default settings to ensure all properties exist
+      return {
+        ...this.defaultSettings,
+        ...actualSettings
+      };
     } catch (error) {
       console.error('Erro ao obter configurações:', error);
       return this.defaultSettings;
@@ -145,21 +154,29 @@ class SettingsService {
   public saveSection<K extends keyof Settings>(section: K, data: Partial<Settings[K]>): boolean {
     try {
       const settings = this.getSettings();
-      const updated = {
+      const storageSettings = this.settingsStore.getAll();
+      
+      // Create the updated settings object
+      const updatedSettings = {
         ...settings,
         [section]: {
           ...settings[section],
           ...data
-        },
-        updated_at: new Date().toISOString()
-      } as unknown as BaseSettings;
+        }
+      };
+      
+      // Prepare the data for storage
+      const now = new Date().toISOString();
+      const baseSettings: BaseSettings = {
+        id: storageSettings.length > 0 ? storageSettings[0].id : 'default',
+        created_at: storageSettings.length > 0 ? storageSettings[0].created_at : now,
+        updated_at: now,
+        ...updatedSettings
+      };
 
-      if ('id' in settings) {
-        this.settingsStore.update((settings as unknown as BaseSettings).id, updated);
+      if (storageSettings.length > 0) {
+        this.settingsStore.update(baseSettings.id, baseSettings);
       } else {
-        const baseSettings = updated as unknown as BaseSettings;
-        baseSettings.id = 'default';
-        baseSettings.created_at = new Date().toISOString();
         this.settingsStore.add(baseSettings);
       }
 

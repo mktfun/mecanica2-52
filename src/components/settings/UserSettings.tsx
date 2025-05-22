@@ -1,12 +1,14 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Pencil, Trash2, UserPlus, Shield, History } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Search, Plus, Edit, Trash2, Check, X } from 'lucide-react';
 import {
   Form,
   FormControl,
@@ -25,26 +27,12 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -53,818 +41,769 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Switch } from '@/components/ui/switch';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import { toast } from '@/components/ui/sonner';
-import { Permission, Role, SystemUser } from '@/types/settings';
+import { UserSettings as UserSettingsType, Role, Permission, SystemUser } from '@/types/settings';
 import { useSettings } from '@/hooks/useSettings';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
-// Módulos do sistema
-const systemModules = [
-  { id: 'all', name: 'Todo o Sistema' },
-  { id: 'dashboard', name: 'Dashboard' },
-  { id: 'leads', name: 'Leads' },
-  { id: 'appointments', name: 'Agendamentos' },
-  { id: 'orders', name: 'Ordens de Serviço' },
-  { id: 'reports', name: 'Relatórios' },
-  { id: 'settings', name: 'Configurações' },
-  { id: 'marketing', name: 'Marketing Digital' },
-  { id: 'inventory', name: 'Inventário' },
-  { id: 'financial', name: 'Financeiro' }
-];
-
-// Esquemas de validação
-const userSchema = z.object({
-  id: z.string().optional(),
-  name: z.string().min(2, { message: 'Nome deve ter pelo menos 2 caracteres' }),
-  email: z.string().email({ message: 'Email inválido' }),
-  roleId: z.string({ required_error: 'Perfil é obrigatório' }),
-  active: z.boolean().default(true)
+// Esquema de validação para papel (role)
+const roleSchema = z.object({
+  id: z.string().min(1, { message: 'ID é obrigatório' }),
+  name: z.string().min(1, { message: 'Nome é obrigatório' }),
 });
 
-const roleSchema = z.object({
-  id: z.string().min(1, { message: 'ID do perfil é obrigatório' }),
-  name: z.string().min(2, { message: 'Nome deve ter pelo menos 2 caracteres' }),
-  permissions: z.array(z.object({
-    module: z.string(),
-    create: z.boolean(),
-    read: z.boolean(),
-    update: z.boolean(),
-    delete: z.boolean()
-  }))
+// Esquema de validação para usuário
+const userSchema = z.object({
+  name: z.string().min(1, { message: 'Nome é obrigatório' }),
+  email: z.string().email({ message: 'Email inválido' }),
+  roleId: z.string().min(1, { message: 'Papel é obrigatório' }),
+  active: z.boolean().default(true),
 });
 
 const UserSettings = () => {
   const { settings, saveSection, loading } = useSettings('users');
-  const [activeTab, setActiveTab] = useState('users');
+  const userSettings = settings as UserSettingsType;
   
-  const [userDialog, setUserDialog] = useState({ open: false, isEdit: false, editId: '' });
-  const [roleDialog, setRoleDialog] = useState({ open: false, isEdit: false, editId: '' });
-  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: '', type: '' });
+  const [activeTab, setActiveTab] = useState('users');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [editingUser, setEditingUser] = useState<SystemUser | null>(null);
+  const [isAddingRole, setIsAddingRole] = useState(false);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
 
-  // Valores padrão para os perfis de acesso
-  const defaultRoles: Role[] = [
-    {
-      id: 'admin',
-      name: 'Administrador',
-      permissions: [
-        {
-          module: 'all',
-          create: true,
-          read: true,
-          update: true,
-          delete: true
-        }
-      ]
-    },
-    {
-      id: 'manager',
-      name: 'Gerente',
-      permissions: [
-        {
-          module: 'leads',
-          create: true,
-          read: true,
-          update: true,
-          delete: false
-        },
-        {
-          module: 'appointments',
-          create: true,
-          read: true,
-          update: true,
-          delete: false
-        },
-        {
-          module: 'orders',
-          create: true,
-          read: true,
-          update: true,
-          delete: false
-        },
-        {
-          module: 'reports',
-          create: false,
-          read: true,
-          update: false,
-          delete: false
-        }
-      ]
+  // Form para papel (role)
+  const roleForm = useForm<z.infer<typeof roleSchema>>({
+    resolver: zodResolver(roleSchema),
+    defaultValues: {
+      id: '',
+      name: '',
     }
-  ];
+  });
 
-  // Formulários
+  // Form para usuário
   const userForm = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
     defaultValues: {
       name: '',
       email: '',
       roleId: '',
-      active: true
+      active: true,
     }
   });
 
-  const roleForm = useForm<z.infer<typeof roleSchema>>({
-    resolver: zodResolver(roleSchema),
-    defaultValues: {
-      id: '',
-      name: '',
-      permissions: systemModules.map(module => ({
-        module: module.id,
-        create: false,
-        read: false,
-        update: false,
-        delete: false
-      }))
+  // Inicializar permissões padrão
+  useEffect(() => {
+    if (!editingRole && !isAddingRole) return;
+    
+    const defaultPermissions: Permission[] = [
+      { module: 'dashboard', create: false, read: true, update: false, delete: false },
+      { module: 'clients', create: false, read: false, update: false, delete: false },
+      { module: 'vehicles', create: false, read: false, update: false, delete: false },
+      { module: 'services', create: false, read: false, update: false, delete: false },
+      { module: 'orders', create: false, read: false, update: false, delete: false },
+      { module: 'inventory', create: false, read: false, update: false, delete: false },
+      { module: 'reports', create: false, read: false, update: false, delete: false },
+      { module: 'settings', create: false, read: false, update: false, delete: false },
+    ];
+    
+    if (editingRole) {
+      setPermissions(editingRole.permissions);
+    } else {
+      setPermissions(defaultPermissions);
     }
-  });
+  }, [editingRole, isAddingRole]);
 
-  // Obter dados ou usar valores padrão
-  const roles = settings?.roles || defaultRoles;
-  const users = settings?.users || [];
+  // Inicializar formulário de papel ao editar
+  useEffect(() => {
+    if (editingRole) {
+      roleForm.reset({
+        id: editingRole.id,
+        name: editingRole.name,
+      });
+    }
+  }, [editingRole, roleForm]);
 
-  // Obter função pelo ID
+  // Inicializar formulário de usuário ao editar
+  useEffect(() => {
+    if (editingUser) {
+      userForm.reset({
+        name: editingUser.name,
+        email: editingUser.email,
+        roleId: editingUser.roleId,
+        active: editingUser.active,
+      });
+    }
+  }, [editingUser, userForm]);
+
+  // Filtrar usuários por termo de busca
+  const filteredUsers = userSettings.users.filter(user => 
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Filtrar papéis por termo de busca
+  const filteredRoles = userSettings.roles.filter(role => 
+    role.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Obter nome do papel pelo ID
   const getRoleName = (roleId: string) => {
-    const role = roles.find(r => r.id === roleId);
+    const role = userSettings.roles.find(r => r.id === roleId);
     return role ? role.name : 'Desconhecido';
   };
 
-  // Abrir diálogo para adicionar usuário
-  const openAddUserDialog = () => {
-    userForm.reset({
-      name: '',
-      email: '',
-      roleId: roles.length > 0 ? roles[0].id : '',
-      active: true
-    });
-    setUserDialog({ open: true, isEdit: false, editId: '' });
+  // Atualizar permissão
+  const updatePermission = (moduleIndex: number, field: keyof Permission, value: boolean) => {
+    const updatedPermissions = [...permissions];
+    updatedPermissions[moduleIndex] = {
+      ...updatedPermissions[moduleIndex],
+      [field]: value
+    };
+    setPermissions(updatedPermissions);
   };
 
-  // Abrir diálogo para editar usuário
-  const openEditUserDialog = (user: SystemUser) => {
-    userForm.reset({
-      name: user.name,
-      email: user.email,
-      roleId: user.roleId,
-      active: user.active
-    });
-    setUserDialog({ open: true, isEdit: true, editId: user.id });
-  };
-
-  // Abrir diálogo para adicionar perfil
-  const openAddRoleDialog = () => {
-    roleForm.reset({
-      id: '',
-      name: '',
-      permissions: systemModules.map(module => ({
-        module: module.id,
-        create: false,
-        read: false,
-        update: false,
-        delete: false
-      }))
-    });
-    setRoleDialog({ open: true, isEdit: false, editId: '' });
-  };
-
-  // Abrir diálogo para editar perfil
-  const openEditRoleDialog = (role: Role) => {
-    // Garantir que todos os módulos estejam presentes
-    const allPermissions = systemModules.map(module => {
-      const existingPermission = role.permissions.find(p => p.module === module.id);
-      
-      return existingPermission || {
-        module: module.id,
-        create: false,
-        read: false,
-        update: false,
-        delete: false
-      };
-    });
-    
-    roleForm.reset({
-      id: role.id,
-      name: role.name,
-      permissions: allPermissions
-    });
-    
-    setRoleDialog({ open: true, isEdit: true, editId: role.id });
-  };
-
-  // Remover usuário
-  const removeUser = (id: string) => {
-    const updatedUsers = users.filter(user => user.id !== id);
-    const success = saveSection('users', { users: updatedUsers });
-    
-    if (success) {
-      toast.success('Usuário removido com sucesso');
-    }
-    
-    setDeleteConfirm({ open: false, id: '', type: '' });
-  };
-
-  // Remover perfil
-  const removeRole = (id: string) => {
-    // Verificar se há usuários com este perfil
-    const usersWithRole = users.filter(user => user.roleId === id);
-    
-    if (usersWithRole.length > 0) {
-      toast.error(`Não é possível remover o perfil. Existem ${usersWithRole.length} usuários com este perfil.`);
-      setDeleteConfirm({ open: false, id: '', type: '' });
+  // Adicionar novo papel
+  const handleAddRole = (data: z.infer<typeof roleSchema>) => {
+    // Verificar se ID já existe
+    if (userSettings.roles.some(role => role.id === data.id)) {
+      roleForm.setError('id', { message: 'Este ID já está em uso' });
       return;
     }
     
-    // Verificar se é um dos perfis padrão
-    if (id === 'admin') {
-      toast.error('Não é possível remover o perfil de Administrador.');
-      setDeleteConfirm({ open: false, id: '', type: '' });
+    const newRole: Role = {
+      id: data.id,
+      name: data.name,
+      permissions: permissions
+    };
+    
+    const updatedRoles = [...userSettings.roles, newRole];
+    saveSection('users', { roles: updatedRoles });
+    
+    setIsAddingRole(false);
+    roleForm.reset();
+    toast.success('Papel adicionado com sucesso');
+  };
+
+  // Atualizar papel existente
+  const handleUpdateRole = (data: z.infer<typeof roleSchema>) => {
+    if (!editingRole) return;
+    
+    // Verificar se ID já existe e não é o mesmo do papel atual
+    if (data.id !== editingRole.id && userSettings.roles.some(role => role.id === data.id)) {
+      roleForm.setError('id', { message: 'Este ID já está em uso' });
       return;
     }
     
-    const updatedRoles = roles.filter(role => role.id !== id);
-    const success = saveSection('users', { roles: updatedRoles });
+    const updatedRole: Role = {
+      id: data.id,
+      name: data.name,
+      permissions: permissions
+    };
     
-    if (success) {
-      toast.success('Perfil removido com sucesso');
-    }
-    
-    setDeleteConfirm({ open: false, id: '', type: '' });
-  };
-
-  // Salvar usuário
-  const onUserSubmit = (data: z.infer<typeof userSchema>) => {
-    let updatedUsers = [...users];
-    
-    if (userDialog.isEdit) {
-      // Atualizar usuário existente
-      updatedUsers = updatedUsers.map(user =>
-        user.id === userDialog.editId ? {
-          ...user,
-          ...data,
-          updated_at: new Date().toISOString()
-        } : user
-      );
-    } else {
-      // Adicionar novo usuário
-      updatedUsers.push({
-        ...data,
-        id: Date.now().toString(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-    }
-    
-    const success = saveSection('users', { users: updatedUsers });
-    
-    if (success) {
-      toast.success(userDialog.isEdit ? 'Usuário atualizado com sucesso' : 'Usuário adicionado com sucesso');
-      setUserDialog({ open: false, isEdit: false, editId: '' });
-    }
-  };
-
-  // Salvar perfil
-  const onRoleSubmit = (data: z.infer<typeof roleSchema>) => {
-    // Verificar se o ID já existe em caso de novo perfil
-    if (!roleDialog.isEdit && roles.some(role => role.id === data.id)) {
-      roleForm.setError('id', {
-        type: 'manual',
-        message: 'Este ID de perfil já está em uso'
-      });
-      return;
-    }
-    
-    let updatedRoles = [...roles];
-    
-    if (roleDialog.isEdit) {
-      // Atualizar perfil existente
-      updatedRoles = updatedRoles.map(role =>
-        role.id === roleDialog.editId ? data : role
-      );
-    } else {
-      // Adicionar novo perfil
-      updatedRoles.push(data);
-    }
-    
-    const success = saveSection('users', { roles: updatedRoles });
-    
-    if (success) {
-      toast.success(roleDialog.isEdit ? 'Perfil atualizado com sucesso' : 'Perfil adicionado com sucesso');
-      setRoleDialog({ open: false, isEdit: false, editId: '' });
-    }
-  };
-
-  // Formatar data
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: ptBR });
-    } catch (error) {
-      return 'Data desconhecida';
-    }
-  };
-
-  // Alternar estado de um usuário
-  const toggleUserActive = (id: string, currentState: boolean) => {
-    const updatedUsers = users.map(user =>
-      user.id === id ? {
-        ...user,
-        active: !currentState,
-        updated_at: new Date().toISOString()
-      } : user
+    const updatedRoles = userSettings.roles.map(role => 
+      role.id === editingRole.id ? updatedRole : role
     );
     
-    const success = saveSection('users', { users: updatedUsers });
+    saveSection('users', { roles: updatedRoles });
     
-    if (success) {
-      toast.success(currentState 
-        ? 'Usuário desativado com sucesso' 
-        : 'Usuário ativado com sucesso'
+    // Atualizar roleId dos usuários se o ID do papel mudou
+    if (data.id !== editingRole.id) {
+      const updatedUsers = userSettings.users.map(user => 
+        user.roleId === editingRole.id ? { ...user, roleId: data.id } : user
       );
+      saveSection('users', { users: updatedUsers });
     }
+    
+    setEditingRole(null);
+    roleForm.reset();
+    toast.success('Papel atualizado com sucesso');
+  };
+
+  // Excluir papel
+  const handleDeleteRole = (roleId: string) => {
+    // Verificar se há usuários usando este papel
+    if (userSettings.users.some(user => user.roleId === roleId)) {
+      toast.error('Não é possível excluir um papel que está sendo usado por usuários');
+      return;
+    }
+    
+    const updatedRoles = userSettings.roles.filter(role => role.id !== roleId);
+    saveSection('users', { roles: updatedRoles });
+    
+    setConfirmDelete(null);
+    toast.success('Papel excluído com sucesso');
+  };
+
+  // Adicionar novo usuário
+  const handleAddUser = (data: z.infer<typeof userSchema>) => {
+    // Verificar se email já existe
+    if (userSettings.users.some(user => user.email === data.email)) {
+      userForm.setError('email', { message: 'Este email já está em uso' });
+      return;
+    }
+    
+    const newUser: SystemUser = {
+      id: Date.now().toString(),
+      name: data.name,
+      email: data.email,
+      roleId: data.roleId,
+      active: data.active,
+      created_at: new Date().toISOString()
+    };
+    
+    const updatedUsers = [...userSettings.users, newUser];
+    saveSection('users', { users: updatedUsers });
+    
+    setIsAddingUser(false);
+    userForm.reset();
+    toast.success('Usuário adicionado com sucesso');
+  };
+
+  // Atualizar usuário existente
+  const handleUpdateUser = (data: z.infer<typeof userSchema>) => {
+    if (!editingUser) return;
+    
+    // Verificar se email já existe e não é o mesmo do usuário atual
+    if (data.email !== editingUser.email && userSettings.users.some(user => user.email === data.email)) {
+      userForm.setError('email', { message: 'Este email já está em uso' });
+      return;
+    }
+    
+    const updatedUser: SystemUser = {
+      ...editingUser,
+      name: data.name,
+      email: data.email,
+      roleId: data.roleId,
+      active: data.active,
+      updated_at: new Date().toISOString()
+    };
+    
+    const updatedUsers = userSettings.users.map(user => 
+      user.id === editingUser.id ? updatedUser : user
+    );
+    
+    saveSection('users', { users: updatedUsers });
+    
+    setEditingUser(null);
+    userForm.reset();
+    toast.success('Usuário atualizado com sucesso');
+  };
+
+  // Excluir usuário
+  const handleDeleteUser = (userId: string) => {
+    const updatedUsers = userSettings.users.filter(user => user.id !== userId);
+    saveSection('users', { users: updatedUsers });
+    
+    setConfirmDelete(null);
+    toast.success('Usuário excluído com sucesso');
+  };
+
+  // Alternar status ativo do usuário
+  const toggleUserActive = (userId: string, active: boolean) => {
+    const updatedUsers = userSettings.users.map(user => 
+      user.id === userId ? { ...user, active, updated_at: new Date().toISOString() } : user
+    );
+    
+    saveSection('users', { users: updatedUsers });
+    toast.success(`Usuário ${active ? 'ativado' : 'desativado'} com sucesso`);
+  };
+
+  // Renderizar formulário de papel
+  const renderRoleForm = () => {
+    const isEditing = !!editingRole;
+    
+    return (
+      <Form {...roleForm}>
+        <form onSubmit={roleForm.handleSubmit(isEditing ? handleUpdateRole : handleAddRole)} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={roleForm.control}
+              name="id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>ID do Papel</FormLabel>
+                  <FormControl>
+                    <Input {...field} disabled={isEditing} />
+                  </FormControl>
+                  <FormDescription>
+                    Identificador único para o papel (ex: admin, manager)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={roleForm.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome do Papel</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    Nome descritivo para o papel (ex: Administrador, Gerente)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Permissões</h3>
+            <p className="text-sm text-gray-500">
+              Configure as permissões para este papel
+            </p>
+            
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Módulo</TableHead>
+                  <TableHead className="w-[100px] text-center">Criar</TableHead>
+                  <TableHead className="w-[100px] text-center">Ler</TableHead>
+                  <TableHead className="w-[100px] text-center">Atualizar</TableHead>
+                  <TableHead className="w-[100px] text-center">Excluir</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {permissions.map((permission, index) => (
+                  <TableRow key={permission.module}>
+                    <TableCell className="font-medium capitalize">
+                      {permission.module}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Checkbox 
+                        checked={permission.create}
+                        onCheckedChange={(checked) => updatePermission(index, 'create', !!checked)}
+                      />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Checkbox 
+                        checked={permission.read}
+                        onCheckedChange={(checked) => updatePermission(index, 'read', !!checked)}
+                      />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Checkbox 
+                        checked={permission.update}
+                        onCheckedChange={(checked) => updatePermission(index, 'update', !!checked)}
+                      />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Checkbox 
+                        checked={permission.delete}
+                        onCheckedChange={(checked) => updatePermission(index, 'delete', !!checked)}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          
+          <div className="flex justify-end gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                setIsAddingRole(false);
+                setEditingRole(null);
+                roleForm.reset();
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {isEditing ? 'Atualizar' : 'Adicionar'} Papel
+            </Button>
+          </div>
+        </form>
+      </Form>
+    );
+  };
+
+  // Renderizar formulário de usuário
+  const renderUserForm = () => {
+    const isEditing = !!editingUser;
+    
+    return (
+      <Form {...userForm}>
+        <form onSubmit={userForm.handleSubmit(isEditing ? handleUpdateUser : handleAddUser)} className="space-y-6">
+          <FormField
+            control={userForm.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nome</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={userForm.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input type="email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={userForm.control}
+            name="roleId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Papel</FormLabel>
+                <Select 
+                  value={field.value} 
+                  onValueChange={field.onChange}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um papel" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {userSettings.roles.map(role => (
+                      <SelectItem key={role.id} value={role.id}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={userForm.control}
+            name="active"
+            render={({ field }) => (
+              <FormItem className="flex items-center space-x-2">
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <FormLabel>Usuário Ativo</FormLabel>
+              </FormItem>
+            )}
+          />
+          
+          <div className="flex justify-end gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                setIsAddingUser(false);
+                setEditingUser(null);
+                userForm.reset();
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {isEditing ? 'Atualizar' : 'Adicionar'} Usuário
+            </Button>
+          </div>
+        </form>
+      </Form>
+    );
   };
 
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold">Usuários e Permissões</h2>
+        <h2 className="text-2xl font-bold">Configurações de Usuários</h2>
         <p className="text-sm text-gray-500">
-          Gerencie os usuários do sistema e seus perfis de acesso
+          Gerencie usuários e papéis de acesso ao sistema
         </p>
       </div>
       
       <Separator />
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-2 mb-6">
-          <TabsTrigger value="users">
-            <UserPlus className="h-4 w-4 mr-2" />
-            Usuários
-          </TabsTrigger>
-          <TabsTrigger value="roles">
-            <Shield className="h-4 w-4 mr-2" />
-            Perfis
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="users">Usuários</TabsTrigger>
+            <TabsTrigger value="roles">Papéis</TabsTrigger>
+          </TabsList>
+          
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              placeholder="Buscar..."
+              className="pl-8 w-[200px]"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
         
-        <TabsContent value="users">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Usuários do Sistema</CardTitle>
-                <CardDescription>
-                  Gerenciar os usuários com acesso ao sistema
-                </CardDescription>
-              </div>
-              <Button onClick={openAddUserDialog}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Novo Usuário
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {users.length === 0 ? (
-                <div className="text-center py-10">
-                  <p className="text-sm text-gray-500 mb-4">
-                    Nenhum usuário cadastrado
-                  </p>
-                  <Button onClick={openAddUserDialog} variant="outline">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Adicionar Primeiro Usuário
-                  </Button>
+        <TabsContent value="users" className="mt-6">
+          {isAddingUser || editingUser ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {renderUserForm()}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Usuários</CardTitle>
+                  <CardDescription>
+                    Gerencie os usuários do sistema
+                  </CardDescription>
                 </div>
-              ) : (
-                <div className="rounded-md border">
+                <Button onClick={() => setIsAddingUser(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo Usuário
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {userSettings.users.length === 0 ? (
+                  <div className="text-center py-10">
+                    <p className="text-gray-500 mb-4">Nenhum usuário cadastrado</p>
+                    <Button onClick={() => setIsAddingUser(true)}>
+                      Adicionar Primeiro Usuário
+                    </Button>
+                  </div>
+                ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Nome</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead>Perfil</TableHead>
+                        <TableHead>Papel</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Criado em</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users.map((user) => (
+                      {filteredUsers.map(user => (
                         <TableRow key={user.id}>
                           <TableCell className="font-medium">{user.name}</TableCell>
                           <TableCell>{user.email}</TableCell>
                           <TableCell>{getRoleName(user.roleId)}</TableCell>
                           <TableCell>
-                            <div className="flex items-center">
-                              <div className={`mr-2 h-2.5 w-2.5 rounded-full ${user.active ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                              {user.active ? 'Ativo' : 'Inativo'}
-                            </div>
+                            {user.active ? (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                Ativo
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                                Inativo
+                              </Badge>
+                            )}
                           </TableCell>
-                          <TableCell>{formatDate(user.created_at)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Button 
                                 variant="ghost" 
-                                size="sm"
-                                onClick={() => openEditUserDialog(user)}
+                                size="icon"
+                                onClick={() => setEditingUser(user)}
                               >
-                                <Pencil className="h-4 w-4" />
+                                <Edit className="h-4 w-4" />
                               </Button>
-                              <Button 
-                                variant={user.active ? "destructive" : "default"}
-                                size="sm"
-                                onClick={() => toggleUserActive(user.id, user.active)}
-                              >
-                                {user.active ? 'Desativar' : 'Ativar'}
-                              </Button>
+                              
                               <Button 
                                 variant="ghost" 
-                                size="sm"
-                                onClick={() => setDeleteConfirm({ open: true, id: user.id, type: 'user' })}
+                                size="icon"
+                                onClick={() => toggleUserActive(user.id, !user.active)}
                               >
-                                <Trash2 className="h-4 w-4" />
+                                {user.active ? (
+                                  <X className="h-4 w-4 text-red-500" />
+                                ) : (
+                                  <Check className="h-4 w-4 text-green-500" />
+                                )}
                               </Button>
+                              
+                              <Dialog open={confirmDelete === user.id} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+                                <DialogTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => setConfirmDelete(user.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Confirmar exclusão</DialogTitle>
+                                    <DialogDescription>
+                                      Tem certeza que deseja excluir o usuário "{user.name}"?
+                                      Esta ação não pode ser desfeita.
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <DialogFooter>
+                                    <Button 
+                                      variant="outline" 
+                                      onClick={() => setConfirmDelete(null)}
+                                    >
+                                      Cancelar
+                                    </Button>
+                                    <Button 
+                                      variant="destructive"
+                                      onClick={() => handleDeleteUser(user.id)}
+                                    >
+                                      Excluir
+                                    </Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
                             </div>
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
         
-        <TabsContent value="roles">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Perfis de Acesso</CardTitle>
-                <CardDescription>
-                  Gerenciar os perfis de acesso e suas permissões
-                </CardDescription>
-              </div>
-              <Button onClick={openAddRoleDialog}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Novo Perfil
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {roles.map((role) => (
-                  <Card key={role.id} className="border-2 border-gray-200">
-                    <CardHeader>
-                      <CardTitle className="text-xl">{role.name}</CardTitle>
-                      <CardDescription className="text-xs">
-                        ID: {role.id}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <h4 className="font-medium mb-2">Permissões:</h4>
-                      <ul className="space-y-2 text-sm">
-                        {role.permissions.map((permission) => {
-                          const module = systemModules.find(m => m.id === permission.module);
-                          if (!module) return null;
-                          
-                          const actions = [];
-                          if (permission.read) actions.push('Visualizar');
-                          if (permission.create) actions.push('Criar');
-                          if (permission.update) actions.push('Editar');
-                          if (permission.delete) actions.push('Excluir');
-                          
-                          return (
-                            <li key={permission.module} className="flex flex-col">
-                              <span className="font-medium">{module.name}</span>
-                              <span className="text-xs text-gray-500">
-                                {actions.length > 0 
-                                  ? actions.join(', ')
-                                  : 'Sem permissões'}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </CardContent>
-                    <CardFooter className="flex justify-end gap-2 border-t pt-4">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => openEditRoleDialog(role)}
-                      >
-                        <Pencil className="h-4 w-4 mr-1" />
-                        Editar
-                      </Button>
-                      {role.id !== 'admin' && (
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => setDeleteConfirm({ open: true, id: role.id, type: 'role' })}
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Remover
-                        </Button>
-                      )}
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="roles" className="mt-6">
+          {isAddingRole || editingRole ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {editingRole ? 'Editar Papel' : 'Novo Papel'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {renderRoleForm()}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Papéis</CardTitle>
+                  <CardDescription>
+                    Gerencie os papéis e permissões do sistema
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setIsAddingRole(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo Papel
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Permissões</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRoles.map(role => (
+                      <TableRow key={role.id}>
+                        <TableCell className="font-medium">{role.id}</TableCell>
+                        <TableCell>{role.name}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {role.permissions.filter(p => p.read || p.create || p.update || p.delete).map(p => (
+                              <Badge key={p.module} variant="outline" className="capitalize">
+                                {p.module}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => setEditingRole(role)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            
+                            <Dialog open={confirmDelete === role.id} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+                              <DialogTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => setConfirmDelete(role.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Confirmar exclusão</DialogTitle>
+                                  <DialogDescription>
+                                    Tem certeza que deseja excluir o papel "{role.name}"?
+                                    Esta ação não pode ser desfeita.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <DialogFooter>
+                                  <Button 
+                                    variant="outline" 
+                                    onClick={() => setConfirmDelete(null)}
+                                  >
+                                    Cancelar
+                                  </Button>
+                                  <Button 
+                                    variant="destructive"
+                                    onClick={() => handleDeleteRole(role.id)}
+                                  >
+                                    Excluir
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
-      
-      {/* Dialog para adicionar/editar usuário */}
-      <Dialog open={userDialog.open} onOpenChange={(open) => setUserDialog({ ...userDialog, open })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{userDialog.isEdit ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
-            <DialogDescription>
-              {userDialog.isEdit 
-                ? 'Atualize as informações do usuário' 
-                : 'Preencha os dados do novo usuário'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <Form {...userForm}>
-            <form onSubmit={userForm.handleSubmit(onUserSubmit)} className="space-y-6">
-              <FormField
-                control={userForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome*</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={userForm.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email*</FormLabel>
-                    <FormControl>
-                      <Input type="email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={userForm.control}
-                name="roleId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Perfil*</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um perfil" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {roles.map((role) => (
-                          <SelectItem key={role.id} value={role.id}>
-                            {role.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      O perfil define as permissões do usuário
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={userForm.control}
-                name="active"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Status do Usuário</FormLabel>
-                      <FormDescription>
-                        Usuários inativos não podem acessar o sistema
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setUserDialog({ ...userDialog, open: false })}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={loading}>
-                  {userDialog.isEdit ? 'Atualizar' : 'Adicionar'} Usuário
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Dialog para adicionar/editar perfil */}
-      <Dialog open={roleDialog.open} onOpenChange={(open) => setRoleDialog({ ...roleDialog, open })}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{roleDialog.isEdit ? 'Editar Perfil' : 'Novo Perfil'}</DialogTitle>
-            <DialogDescription>
-              {roleDialog.isEdit 
-                ? 'Atualize as informações do perfil' 
-                : 'Preencha os dados do novo perfil'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <Form {...roleForm}>
-            <form onSubmit={roleForm.handleSubmit(onRoleSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={roleForm.control}
-                  name="id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>ID do Perfil*</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          disabled={roleDialog.isEdit}
-                          placeholder="ex: manager, operator"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Identificador único do perfil (sem espaços ou caracteres especiais)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={roleForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome do Perfil*</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="ex: Gerente, Operador" />
-                      </FormControl>
-                      <FormDescription>
-                        Nome de exibição do perfil
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-medium mb-4">Permissões</h3>
-                
-                <div className="border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Módulo</TableHead>
-                        <TableHead className="text-center">Visualizar</TableHead>
-                        <TableHead className="text-center">Criar</TableHead>
-                        <TableHead className="text-center">Editar</TableHead>
-                        <TableHead className="text-center">Excluir</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {roleForm.watch('permissions').map((permission, index) => {
-                        const module = systemModules.find(m => m.id === permission.module);
-                        
-                        return (
-                          <TableRow key={permission.module}>
-                            <TableCell className="font-medium">
-                              {module?.name || permission.module}
-                              
-                              {/* Se for o módulo 'all', mostrar alerta */}
-                              {permission.module === 'all' && (
-                                <p className="text-xs text-amber-600 font-normal">
-                                  Esta opção concede acesso a todo o sistema
-                                </p>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Switch
-                                checked={permission.read}
-                                onCheckedChange={(checked) => {
-                                  const newPermissions = [...roleForm.watch('permissions')];
-                                  newPermissions[index].read = checked;
-                                  roleForm.setValue('permissions', newPermissions);
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Switch
-                                checked={permission.create}
-                                onCheckedChange={(checked) => {
-                                  const newPermissions = [...roleForm.watch('permissions')];
-                                  newPermissions[index].create = checked;
-                                  roleForm.setValue('permissions', newPermissions);
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Switch
-                                checked={permission.update}
-                                onCheckedChange={(checked) => {
-                                  const newPermissions = [...roleForm.watch('permissions')];
-                                  newPermissions[index].update = checked;
-                                  roleForm.setValue('permissions', newPermissions);
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Switch
-                                checked={permission.delete}
-                                onCheckedChange={(checked) => {
-                                  const newPermissions = [...roleForm.watch('permissions')];
-                                  newPermissions[index].delete = checked;
-                                  roleForm.setValue('permissions', newPermissions);
-                                }}
-                              />
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-              
-              <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setRoleDialog({ ...roleDialog, open: false })}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={loading}>
-                  {roleDialog.isEdit ? 'Atualizar' : 'Adicionar'} Perfil
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Dialog de confirmação de exclusão */}
-      <Dialog open={deleteConfirm.open} onOpenChange={(open) => setDeleteConfirm({ ...deleteConfirm, open })}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmação</DialogTitle>
-            <DialogDescription>
-              {deleteConfirm.type === 'user'
-                ? 'Tem certeza que deseja remover este usuário? Esta ação não pode ser desfeita.'
-                : 'Tem certeza que deseja remover este perfil? Esta ação não pode ser desfeita.'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setDeleteConfirm({ ...deleteConfirm, open: false })}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => {
-                if (deleteConfirm.type === 'user') {
-                  removeUser(deleteConfirm.id);
-                } else {
-                  removeRole(deleteConfirm.id);
-                }
-              }}
-            >
-              Remover
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

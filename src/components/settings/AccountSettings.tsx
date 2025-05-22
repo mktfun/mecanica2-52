@@ -59,6 +59,7 @@ const notificationsSchema = z.object({
 
 const AccountSettings = () => {
   const { settings, saveSection, loading } = useSettings('account');
+  // Explicitly cast settings to AccountSettingsType
   const accountSettings = settings as AccountSettingsType;
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   

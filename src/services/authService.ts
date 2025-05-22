@@ -11,6 +11,7 @@ interface User {
   position?: string;
   lastLogin?: string;
   active?: boolean;
+  password?: string; // Adding password field to fix the Register component error
 }
 
 class AuthService {
@@ -104,10 +105,13 @@ class AuthService {
       active: true
     };
     
-    this.users.push(newUser);
+    // Remove password from storage (in a real app, you'd hash it)
+    const { password, ...userToStore } = newUser;
+    
+    this.users.push(userToStore as User);
     this.storage.setItem(`${this.storageKey}_users`, JSON.stringify(this.users));
     
-    return newUser;
+    return userToStore as User;
   }
 
   public updateUser(id: string, userData: Partial<User>): User | null {
