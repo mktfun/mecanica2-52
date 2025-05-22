@@ -4,8 +4,7 @@ import { Outlet, Navigate } from 'react-router-dom';
 import authService from '../../services/authService';
 import Sidebar from './NewSidebar';
 import Header from './Header';
-import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const Layout = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -16,7 +15,7 @@ const Layout = () => {
   }
   
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
       {/* Sidebar */}
       <Sidebar isMobile={false} setMobileMenuOpen={setMobileMenuOpen}>
         {/* This empty fragment serves as the children prop */}
@@ -26,9 +25,11 @@ const Layout = () => {
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header setMobileMenuOpen={setMobileMenuOpen} />
         
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
-          <Outlet />
-        </main>
+        <ScrollArea className="flex-1 h-[calc(100vh-64px)]">
+          <main className="p-6">
+            <Outlet />
+          </main>
+        </ScrollArea>
       </div>
     </div>
   );

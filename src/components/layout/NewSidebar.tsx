@@ -1,6 +1,6 @@
 
 import React, { useState, createContext, useContext } from "react";
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from "framer-motion";
 import authService from '@/services/authService';
 import { useToast } from "@/hooks/use-toast";
@@ -15,8 +15,10 @@ import {
   BarChart,
   Bell,
   Menu,
-  X
+  X,
+  ChevronRight
 } from 'lucide-react';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface SidebarContextProps {
   open: boolean;
@@ -85,6 +87,7 @@ export const SidebarBody = ({
   setMobileMenuOpen: (isOpen: boolean) => void;
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const currentUser = authService.getCurrentUser();
   const { toast } = useToast();
   const { open, setOpen } = useSidebar();
@@ -125,6 +128,7 @@ export const SidebarBody = ({
         currentUser={currentUser} 
         handleLogout={handleLogout} 
         handleNavClick={handleNavClick} 
+        currentPath={location.pathname}
       />
       <MobileSidebar 
         navItems={navItems} 
@@ -132,6 +136,7 @@ export const SidebarBody = ({
         handleLogout={handleLogout} 
         handleNavClick={handleNavClick}
         setMobileMenuOpen={setMobileMenuOpen}
+        currentPath={location.pathname}
       />
     </>
   );
@@ -141,75 +146,109 @@ export const DesktopSidebar = ({
   navItems,
   currentUser,
   handleLogout,
-  handleNavClick
+  handleNavClick,
+  currentPath
 }: {
   navItems: Array<{path: string; name: string; icon: React.ReactNode; notification?: number}>;
   currentUser: any;
   handleLogout: () => void;
   handleNavClick: () => void;
+  currentPath: string;
 }) => {
   const { open, setOpen, animate } = useSidebar();
   
   return (
     <motion.div
-      className="h-screen hidden md:flex md:flex-col bg-white border-r border-gray-200 dark:bg-gray-900 dark:border-gray-800 flex-shrink-0"
+      className="h-screen hidden md:flex md:flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex-shrink-0"
       animate={{
-        width: animate ? (open ? "16rem" : "4rem") : "16rem",
+        width: animate ? (open ? "280px" : "80px") : "280px",
+      }}
+      transition={{
+        type: "spring",
+        stiffness: 300,
+        damping: 30
       }}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <div className="p-4 flex justify-center">
-        <motion.h1 
-          className="text-2xl font-bold text-blue-800 dark:text-blue-400 whitespace-nowrap"
+      <div className="p-4 flex items-center justify-center h-16 border-b border-gray-200 dark:border-gray-800">
+        <motion.div 
+          className="flex items-center gap-3"
           animate={{
-            opacity: animate ? (open ? 1 : 0) : 1,
+            justifyContent: animate ? (open ? "flex-start" : "center") : "flex-start"
           }}
         >
-          MecânicaPro
-        </motion.h1>
+          <div className="w-10 h-10 rounded-md bg-blue-600 flex items-center justify-center text-white font-bold text-xl">
+            M
+          </div>
+          <motion.h1 
+            className="text-xl font-bold text-blue-800 dark:text-blue-400 whitespace-nowrap"
+            animate={{
+              opacity: animate ? (open ? 1 : 0) : 1,
+              display: animate ? (open ? "block" : "none") : "block",
+            }}
+          >
+            MecânicaPro
+          </motion.h1>
+        </motion.div>
       </div>
       
-      <nav className="flex-1 overflow-y-auto p-4">
-        <ul className="space-y-1">
-          {navItems.map((item) => (
-            <li key={item.path}>
-              <NavLink 
-                to={item.path} 
-                className={({ isActive }) => 
-                  cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400",
-                    isActive ? "text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400" : ""
-                  )
-                }
-                onClick={handleNavClick}
-              >
-                {item.icon}
-                <motion.span 
-                  className="flex-1 whitespace-nowrap"
-                  animate={{
-                    display: animate ? (open ? "inline-block" : "none") : "inline-block",
-                    opacity: animate ? (open ? 1 : 0) : 1,
-                  }}
-                >
-                  {item.name}
-                </motion.span>
-                {item.notification && (
-                  <motion.span 
-                    className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-xs font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
-                    animate={{
-                      display: animate ? (open ? "inline-flex" : "none") : "inline-flex",
-                      opacity: animate ? (open ? 1 : 0) : 1,
-                    }}
+      <ScrollArea className="flex-1 overflow-hidden py-2">
+        <nav className="px-2 flex-1">
+          <ul className="space-y-1">
+            {navItems.map((item) => {
+              const isActive = currentPath === item.path;
+              return (
+                <li key={item.path}>
+                  <NavLink 
+                    to={item.path} 
+                    className={({ isActive }) => 
+                      cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all relative overflow-hidden",
+                        isActive 
+                          ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
+                          : "text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                      )
+                    }
+                    onClick={handleNavClick}
                   >
-                    {item.notification}
-                  </motion.span>
-                )}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
+                    <div className={`${isActive ? "text-blue-600 dark:text-blue-400" : ""}`}>
+                      {item.icon}
+                    </div>
+                    <motion.span 
+                      className="flex-1 whitespace-nowrap"
+                      animate={{
+                        display: animate ? (open ? "inline-block" : "none") : "inline-block",
+                        opacity: animate ? (open ? 1 : 0) : 1,
+                      }}
+                    >
+                      {item.name}
+                    </motion.span>
+                    {item.notification && (
+                      <motion.span 
+                        className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-xs font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
+                        animate={{
+                          display: animate ? (open ? "inline-flex" : "none") : "inline-flex",
+                          opacity: animate ? (open ? 1 : 0) : 1,
+                        }}
+                      >
+                        {item.notification}
+                      </motion.span>
+                    )}
+                    {isActive && (
+                      <motion.div 
+                        className="absolute inset-y-0 left-0 w-1 bg-blue-600 dark:bg-blue-500 rounded-r-full" 
+                        layoutId="activeDesktopNav"
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                  </NavLink>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      </ScrollArea>
       
       <div className="p-4 border-t border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-3 mb-4">
@@ -230,7 +269,7 @@ export const DesktopSidebar = ({
         </div>
         
         <button 
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-all hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
           onClick={handleLogout}
         >
           <LogOut className="h-5 w-5" />
@@ -253,98 +292,136 @@ export const MobileSidebar = ({
   currentUser,
   handleLogout,
   handleNavClick,
-  setMobileMenuOpen
+  setMobileMenuOpen,
+  currentPath
 }: {
   navItems: Array<{path: string; name: string; icon: React.ReactNode; notification?: number}>;
   currentUser: any;
   handleLogout: () => void;
   handleNavClick: () => void;
   setMobileMenuOpen: (isOpen: boolean) => void;
+  currentPath: string;
 }) => {
   const { open, setOpen } = useSidebar();
   
   return (
     <>
       <div className="h-16 px-4 flex items-center justify-between md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 w-full">
-        <h1 className="text-xl font-bold text-blue-800 dark:text-blue-400">MecânicaPro</h1>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-md bg-blue-600 flex items-center justify-center text-white font-bold">
+            M
+          </div>
+          <h1 className="text-lg font-bold text-blue-800 dark:text-blue-400">MecânicaPro</h1>
+        </div>
         <div>
           <Menu
-            className="text-gray-500 dark:text-gray-400 cursor-pointer h-6 w-6"
+            className="text-gray-700 dark:text-gray-300 cursor-pointer h-6 w-6"
             onClick={() => setMobileMenuOpen(true)}
           />
         </div>
       </div>
       <AnimatePresence>
         {open && (
-          <motion.div
-            initial={{ x: "-100%", opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: "-100%", opacity: 0 }}
-            transition={{
-              duration: 0.3,
-              ease: "easeInOut",
-            }}
-            className="fixed h-full w-full inset-0 bg-white dark:bg-gray-900 z-50 md:hidden flex flex-col"
-          >
-            <div className="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-800">
-              <h1 className="text-xl font-bold text-blue-800 dark:text-blue-400">MecânicaPro</h1>
-              <button
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-gray-500 dark:text-gray-400"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-4">
-              <ul className="space-y-2">
-                {navItems.map((item) => (
-                  <li key={item.path}>
-                    <NavLink 
-                      to={item.path} 
-                      className={({ isActive }) => 
-                        cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400",
-                          isActive ? "text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400" : ""
-                        )
-                      }
-                      onClick={handleNavClick}
-                    >
-                      {item.icon}
-                      <span className="flex-1">{item.name}</span>
-                      {item.notification && (
-                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-xs font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
-                          {item.notification}
-                        </span>
-                      )}
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            
-            <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <span className="text-blue-800 font-medium">
-                    {currentUser?.name.charAt(0) || 'U'}
-                  </span>
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40 md:hidden"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <motion.div
+              initial={{ x: "-100%", opacity: 0.5 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: "-100%", opacity: 0.5 }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 30
+              }}
+              className="fixed h-full inset-y-0 left-0 w-72 bg-white dark:bg-gray-900 z-50 md:hidden flex flex-col border-r border-gray-200 dark:border-gray-800 shadow-xl"
+            >
+              <div className="p-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-md bg-blue-600 flex items-center justify-center text-white font-bold text-xl">
+                    M
+                  </div>
+                  <h1 className="text-xl font-bold text-blue-800 dark:text-blue-400">MecânicaPro</h1>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{currentUser?.name || 'Usuário'}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">{currentUser?.role || 'Funcionário'}</p>
-                </div>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-1"
+                >
+                  <X className="h-6 w-6" />
+                </button>
               </div>
               
-              <button 
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-5 w-5" />
-                <span>Sair</span>
-              </button>
-            </div>
-          </motion.div>
+              <ScrollArea className="flex-1 overflow-hidden">
+                <nav className="p-4">
+                  <ul className="space-y-1">
+                    {navItems.map((item) => {
+                      const isActive = currentPath === item.path;
+                      return (
+                        <li key={item.path}>
+                          <NavLink 
+                            to={item.path} 
+                            className={({ isActive }) => 
+                              cn(
+                                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all relative overflow-hidden",
+                                isActive 
+                                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
+                                  : "text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                              )
+                            }
+                            onClick={handleNavClick}
+                          >
+                            <div className={`${isActive ? "text-blue-600 dark:text-blue-400" : ""}`}>
+                              {item.icon}
+                            </div>
+                            <span className="flex-1">{item.name}</span>
+                            {item.notification && (
+                              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-xs font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
+                                {item.notification}
+                              </span>
+                            )}
+                            {isActive && (
+                              <motion.div 
+                                className="absolute inset-y-0 left-0 w-1 bg-blue-600 dark:bg-blue-500 rounded-r-full" 
+                                layoutId="activeMobileNav"
+                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                              />
+                            )}
+                          </NavLink>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </nav>
+              </ScrollArea>
+              
+              <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                    <span className="text-blue-800 font-medium">
+                      {currentUser?.name.charAt(0) || 'U'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{currentUser?.name || 'Usuário'}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">{currentUser?.role || 'Funcionário'}</p>
+                  </div>
+                </div>
+                
+                <button 
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-all hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span>Sair</span>
+                </button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </>

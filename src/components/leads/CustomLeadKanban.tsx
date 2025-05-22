@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Card } from "@/components/ui/card";
@@ -13,6 +14,8 @@ import KanbanColumnDialog from './KanbanColumnDialog';
 import LeadKanbanCard from './LeadKanbanCard';
 import LeadDetailModal from './LeadDetailModal';
 import LeadFilters, { LeadFilters as LeadFiltersType } from './LeadFilters';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   DropdownMenu,
   DropdownMenuTrigger,
@@ -275,14 +278,22 @@ const CustomLeadKanban = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <motion.div 
+      className="space-y-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Kanban de Leads</h2>
         
-        <Button onClick={() => {
-          setEditingColumn(undefined);
-          setIsColumnDialogOpen(true);
-        }}>
+        <Button 
+          onClick={() => {
+            setEditingColumn(undefined);
+            setIsColumnDialogOpen(true);
+          }}
+          className="transition-all hover:scale-105 active:scale-95"
+        >
           <Plus className="mr-2 h-4 w-4" /> Nova Coluna
         </Button>
       </div>
@@ -301,106 +312,132 @@ const CustomLeadKanban = () => {
       
       <div 
         ref={kanbanContainerRef}
-        className="overflow-x-auto pb-6 min-h-[calc(100vh-350px)]"
+        className="overflow-x-auto pb-6"
+        style={{ height: 'calc(100vh - 250px)' }}
       >
         <DragDropContext 
           onDragStart={handleDragStart}
           onDragUpdate={handleDragUpdate}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-6 min-w-max">
-            {columns.map((column, index) => (
-              <Droppable
-                key={column.id}
-                droppableId={column.id}
-              >
-                {(provided) => (
-                  <div
-                    className="min-w-[280px] w-[280px] flex flex-col"
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                  >
-                    <Card className="mb-2">
-                      <div 
-                        className="p-3 flex justify-between items-center border-b-2"
-                        style={{ borderColor: column.color }}
+          <div className="flex gap-6 h-full min-w-max">
+            <AnimatePresence>
+              {columns.map((column, index) => (
+                <motion.div
+                  key={column.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.2 }}
+                  className="min-w-[280px] w-[280px] flex flex-col"
+                >
+                  <Droppable droppableId={column.id}>
+                    {(provided) => (
+                      <div
+                        className="flex flex-col h-full"
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
                       >
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-sm">{column.title}</h3>
-                          <Badge variant="secondary" className="rounded-full">
-                            {getLeadsForColumn(column.id).length}
-                          </Badge>
-                        </div>
-                        
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <span className="sr-only">Abrir menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditColumn(column)}>
-                              <Edit2 className="mr-2 h-4 w-4" />
-                              <span>Editar coluna</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => handleRemoveColumn(column)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Remover coluna</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </Card>
-                    
-                    <div className="flex-1 p-2 bg-muted/40 rounded-lg overflow-y-auto">
-                      {getLeadsForColumn(column.id).map((lead, index) => (
-                        <Draggable
-                          key={lead.id}
-                          draggableId={lead.id}
-                          index={index}
-                        >
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className={`${snapshot.isDragging ? 'rotate-2 scale-105' : ''}`}
-                            >
-                              <LeadKanbanCard 
-                                lead={lead}
-                                onDragStart={() => {}} // O Draggable já cuida disso
-                                onClick={() => handleLeadClick(lead)}
-                              />
+                        <Card className="mb-2">
+                          <div 
+                            className="p-3 flex justify-between items-center border-b-2"
+                            style={{ borderColor: column.color }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-sm">{column.title}</h3>
+                              <Badge variant="secondary" className="rounded-full">
+                                {getLeadsForColumn(column.id).length}
+                              </Badge>
                             </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                      
-                      {getLeadsForColumn(column.id).length === 0 && (
-                        <div className="text-center p-4 text-sm text-muted-foreground">
-                          <AlertCircle className="mx-auto h-5 w-5 mb-1 opacity-50" />
-                          <p>Sem leads neste estágio</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </Droppable>
-            ))}
+                            
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Abrir menu</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditColumn(column)}>
+                                  <Edit2 className="mr-2 h-4 w-4" />
+                                  <span>Editar coluna</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => handleRemoveColumn(column)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  <span>Remover coluna</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </Card>
+                        
+                        <ScrollArea className="flex-1 p-2 bg-muted/40 rounded-lg">
+                          <div className="min-h-full">
+                            <AnimatePresence>
+                              {getLeadsForColumn(column.id).map((lead, index) => (
+                                <Draggable
+                                  key={lead.id}
+                                  draggableId={lead.id}
+                                  index={index}
+                                >
+                                  {(provided, snapshot) => (
+                                    <motion.div
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      {...provided.dragHandleProps}
+                                      initial={{ opacity: 0, y: 20 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, scale: 0.9 }}
+                                      transition={{ duration: 0.2 }}
+                                      className={`${snapshot.isDragging ? 'rotate-2 scale-105 z-10' : ''}`}
+                                    >
+                                      <LeadKanbanCard 
+                                        lead={lead}
+                                        onDragStart={() => {}} // O Draggable já cuida disso
+                                        onClick={() => handleLeadClick(lead)}
+                                      />
+                                    </motion.div>
+                                  )}
+                                </Draggable>
+                              ))}
+                            </AnimatePresence>
+                            {provided.placeholder}
+                            
+                            {getLeadsForColumn(column.id).length === 0 && (
+                              <motion.div 
+                                className="text-center p-4 text-sm text-muted-foreground"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 0.7 }}
+                                transition={{ delay: 0.2 }}
+                              >
+                                <AlertCircle className="mx-auto h-5 w-5 mb-1 opacity-50" />
+                                <p>Sem leads neste estágio</p>
+                              </motion.div>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    )}
+                  </Droppable>
+                </motion.div>
+              ))}
+            </AnimatePresence>
             
             {columns.length === 0 && (
-              <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg min-w-[300px]">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg min-w-[300px]"
+              >
                 <p className="text-muted-foreground mb-4">Nenhuma coluna configurada.</p>
                 <Button onClick={() => setIsColumnDialogOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" /> Adicionar Coluna
                 </Button>
-              </div>
+              </motion.div>
             )}
           </div>
         </DragDropContext>
@@ -421,7 +458,7 @@ const CustomLeadKanban = () => {
           onOpenChange={setIsDetailModalOpen}
         />
       )}
-    </div>
+    </motion.div>
   );
 };
 
