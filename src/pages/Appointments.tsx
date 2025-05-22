@@ -164,7 +164,7 @@ const Appointments = () => {
         <div>
           {view === 'day' && <DailyView selectedDate={selectedDate} />}
           {view === 'week' && <WeeklyView selectedDate={selectedDate} />}
-          {view === 'month' && <MonthlyView selectedDate={selectedDate} setSelectedDate={setSelectedDate} />}
+          {view === 'month' && <MonthlyView selectedDate={selectedDate} onDateSelected={setSelectedDate} />}
           {view === 'list' && <ListViewAppointments />}
         </div>
       </div>
