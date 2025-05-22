@@ -12,8 +12,6 @@ import Register from "./components/auth/Register";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
-import Clients from "./pages/Clients";
-import Vehicles from "./pages/Vehicles";
 import Appointments from "./pages/Appointments";
 import Orders from "./pages/Orders";
 import Reports from "./pages/Reports";
@@ -39,8 +37,6 @@ const App = () => (
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/leads" element={<Leads />} />
-            <Route path="/clients" element={<Clients />} />
-            <Route path="/vehicles" element={<Vehicles />} />
             <Route path="/appointments" element={<Appointments />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/reports" element={<Reports />} />

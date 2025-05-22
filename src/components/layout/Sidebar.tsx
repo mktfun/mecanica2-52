@@ -10,7 +10,6 @@ import {
   FileText, 
   Settings, 
   LogOut,
-  Car,
   BarChart,
   Bell
 } from 'lucide-react';
@@ -27,7 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobile, setMobileMenuOpen }) => {
   
   const handleLogout = () => {
     authService.logout();
-    toast.add({
+    toast({
       description: "Logout realizado com sucesso"
     });
     navigate('/login');
@@ -36,8 +35,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobile, setMobileMenuOpen }) => {
   const navItems = [
     { path: '/dashboard', name: 'Dashboard', icon: HomeIcon },
     { path: '/leads', name: 'Leads', icon: Users },
-    { path: '/clients', name: 'Clientes', icon: Users },
-    { path: '/vehicles', name: 'Veículos', icon: Car },
     { 
       path: '/appointments', 
       name: 'Agendamentos', 
