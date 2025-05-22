@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -181,7 +180,7 @@ const ListView: React.FC = () => {
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos os status</SelectItem>
+            <SelectItem value="all">Todos os status</SelectItem>
             <SelectItem value="scheduled">Agendados</SelectItem>
             <SelectItem value="in-progress">Em andamento</SelectItem>
             <SelectItem value="completed">Concluídos</SelectItem>
@@ -197,7 +196,7 @@ const ListView: React.FC = () => {
             <SelectValue placeholder="Mecânico" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos os mecânicos</SelectItem>
+            <SelectItem value="all">Todos os mecânicos</SelectItem>
             {mechanics.map(mechanic => (
               <SelectItem key={mechanic} value={mechanic}>
                 {mechanic}
