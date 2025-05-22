@@ -2,7 +2,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import authService from '@/services/authService';
-import { toast } from '@/components/ui/sonner';
+import { toast } from '@/components/ui/use-toast';
 import { 
   HomeIcon, 
   Users, 
@@ -26,7 +26,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobile, setMobileMenuOpen }) => {
   
   const handleLogout = () => {
     authService.logout();
-    toast.success('Logout realizado com sucesso');
+    toast({
+      title: "Logout realizado com sucesso"
+    });
     navigate('/login');
   };
   
