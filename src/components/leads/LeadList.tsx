@@ -181,8 +181,8 @@ const LeadList = () => {
             <SelectContent>
               <SelectItem value="all">Todas Fontes</SelectItem>
               {getSourceOptions.map((source) => (
-                <SelectItem key={source} value={source}>
-                  {source}
+                <SelectItem key={source} value={source || "unknown"}>
+                  {source || "Desconhecido"}
                 </SelectItem>
               ))}
             </SelectContent>
