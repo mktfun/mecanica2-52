@@ -1,13 +1,11 @@
 
-// Tipos de dados para configurações
-
-// Configurações de conta
+// Define types for the settings service
 export interface AccountProfile {
   name: string;
   email: string;
-  phone: string;
-  position: string;
-  avatar: string | null;
+  phone?: string;
+  position?: string;
+  avatar?: string | null;
 }
 
 export interface NotificationPreferences {
@@ -23,54 +21,38 @@ export interface AccountSettings {
   notifications: NotificationPreferences;
 }
 
-// Configurações de unidades
-export interface OpeningHours {
-  open: string;
-  close: string;
-  closed: boolean;
-}
-
-export interface WeeklyHours {
-  monday: OpeningHours;
-  tuesday: OpeningHours;
-  wednesday: OpeningHours;
-  thursday: OpeningHours;
-  friday: OpeningHours;
-  saturday: OpeningHours;
-  sunday: OpeningHours;
-}
-
 export interface Unit {
   id: string;
   name: string;
   address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  phone: string;
-  email: string;
-  openingHours: WeeklyHours;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone?: string;
+  email?: string;
   isMain: boolean;
-  created_at: string;
-  updated_at?: string;
+  openingHours: {
+    [key: string]: {
+      open: string;
+      close: string;
+      closed: boolean;
+    };
+  };
 }
 
-export interface UnitSettings {
-  units: Unit[];
-}
-
-// Configurações do aplicativo
-export interface ThemeSettings {
-  mode: 'light' | 'dark' | 'system';
-  primaryColor: string;
-  accentColor: string;
-}
+export interface UnitSettings extends Array<Unit> {}
 
 export interface DisplaySettings {
   itemsPerPage: number;
   dateFormat: string;
-  timeFormat: string;
+  timeFormat: "24h" | "12h";
   language: string;
+}
+
+export interface ThemeSettings {
+  mode: "light" | "dark" | "system";
+  primaryColor: string;
+  accentColor: string;
 }
 
 export interface SecuritySettings {
@@ -80,25 +62,32 @@ export interface SecuritySettings {
   useEncryption: boolean;
 }
 
-export interface AppSettings {
-  theme: ThemeSettings;
-  display: DisplaySettings;
-  security: SecuritySettings;
+export interface BackupSettings {
+  autoBackup: boolean;
+  backupFrequency: "daily" | "weekly" | "monthly";
+  lastBackup?: string;
+  keepBackups: number;
 }
 
-// Configurações de negócio
+export interface AppSettings {
+  security: SecuritySettings;
+  display: DisplaySettings;
+  theme: ThemeSettings;
+  backup: BackupSettings;
+}
+
 export interface ServiceType {
   id: string;
   name: string;
-  description: string;
-  price?: number;
+  description?: string;
+  price: number;
   estimatedTime?: number;
 }
 
 export interface VehicleCategory {
   id: string;
   name: string;
-  description: string;
+  description?: string;
 }
 
 export interface TaxSettings {
@@ -114,52 +103,32 @@ export interface BusinessSettings {
   termsAndConditions: string;
 }
 
-// Configurações de usuários
-export interface Permission {
-  module: string;
-  create: boolean;
-  read: boolean;
-  update: boolean;
-  delete: boolean;
+export interface SystemUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  active: boolean;
+  lastLogin?: string;
+  permissions: string[];
 }
 
 export interface Role {
   id: string;
   name: string;
-  permissions: Permission[];
-}
-
-export interface SystemUser {
-  id: string;
-  name: string;
-  email: string;
-  roleId: string;
-  active: boolean;
-  lastLogin?: string;
-  created_at: string;
-  updated_at?: string;
+  permissions: string[];
+  description?: string;
 }
 
 export interface UserSettings {
-  roles: Role[];
   users: SystemUser[];
+  roles: Role[];
 }
 
-// Configurações completas
 export interface Settings {
-  id?: string;
   account: AccountSettings;
-  units: UnitSettings;
+  units: Unit[];
   app: AppSettings;
   business: BusinessSettings;
   users: UserSettings;
-  created_at?: string;
-  updated_at?: string;
-}
-
-// Tipo para armazenar as configurações do sistema
-export interface BaseSettings extends Record<string, any> {
-  id: string;
-  created_at: string;
-  updated_at?: string;
 }

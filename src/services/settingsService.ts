@@ -1,16 +1,18 @@
-
-import { StorageService } from "@/core/storage/StorageService";
-import { BaseSettings, Settings } from "@/types/settings";
-import { eventBus, EVENTS } from "@/core/events/EventBus";
+import { toast } from '@/components/ui/sonner';
+import { eventBus, EVENTS } from '@/core/events/EventBus';
+import { Settings } from '@/types/settings';
 
 class SettingsService {
-  private settingsStore: StorageService<BaseSettings>;
+  private storage: Storage;
+  private storageKey: string;
+  private settings: Settings;
   private defaultSettings: Settings;
 
   constructor() {
-    this.settingsStore = new StorageService<BaseSettings>("mecanicapro_settings");
+    this.storage = localStorage;
+    this.storageKey = 'mecanicapro_settings';
     
-    // Definir configurações padrão
+    // Define default settings
     this.defaultSettings = {
       account: {
         profile: {
@@ -18,264 +20,234 @@ class SettingsService {
           email: '',
           phone: '',
           position: '',
-          avatar: null
+          avatar: null,
         },
         notifications: {
           email: true,
           browser: true,
           newLeads: true,
           appointments: true,
-          completedOrders: true
-        }
+          completedOrders: true,
+        },
       },
-      units: {
-        units: []
-      },
+      units: [],
       app: {
-        theme: {
-          mode: 'light',
-          primaryColor: '#0050b3',
-          accentColor: '#1890ff'
+        security: {
+          requirePasswordChange: false,
+          passwordExpirationDays: 90,
+          sessionTimeout: 30,
+          useEncryption: false,
         },
         display: {
           itemsPerPage: 10,
           dateFormat: 'dd/MM/yyyy',
           timeFormat: '24h',
-          language: 'pt-BR'
+          language: 'pt-BR',
         },
-        security: {
-          requirePasswordChange: false,
-          passwordExpirationDays: 90,
-          sessionTimeout: 30,
-          useEncryption: true
-        }
+        theme: {
+          mode: 'light',
+          primaryColor: '#1890ff',
+          accentColor: '#722ed1',
+        },
+        backup: {
+          autoBackup: false,
+          backupFrequency: 'weekly',
+          keepBackups: 5,
+        },
       },
       business: {
         serviceTypes: [],
         vehicleCategories: [],
         taxes: [],
-        termsAndConditions: ''
+        termsAndConditions: '',
       },
       users: {
-        roles: [
-          {
-            id: 'admin',
-            name: 'Administrador',
-            permissions: [
-              {
-                module: 'all',
-                create: true,
-                read: true,
-                update: true,
-                delete: true
-              }
-            ]
-          },
-          {
-            id: 'manager',
-            name: 'Gerente',
-            permissions: [
-              {
-                module: 'leads',
-                create: true,
-                read: true,
-                update: true,
-                delete: false
-              },
-              {
-                module: 'appointments',
-                create: true,
-                read: true,
-                update: true,
-                delete: false
-              },
-              {
-                module: 'orders',
-                create: true,
-                read: true,
-                update: true,
-                delete: false
-              },
-              {
-                module: 'reports',
-                create: false,
-                read: true,
-                update: false,
-                delete: false
-              }
-            ]
-          }
-        ],
-        users: []
-      }
+        users: [],
+        roles: [],
+      },
     };
-  }
-
-  // Inicializar configurações se não existirem
-  public initialize(): void {
-    const settings = this.settingsStore.getAll();
     
-    if (settings.length === 0) {
-      const now = new Date().toISOString();
-      const settingsToStore: BaseSettings = {
-        id: 'default',
-        created_at: now,
-        updated_at: now,
-        ...this.defaultSettings
-      };
-      this.settingsStore.add(settingsToStore);
-    }
+    // Load settings from storage or use defaults
+    this.settings = this.loadSettings();
   }
 
-  // Obter todas as configurações
-  public getSettings(): Settings {
+  private loadSettings(): Settings {
     try {
-      this.initialize();
-      const settings = this.settingsStore.getAll();
-      if (settings.length === 0) {
-        return this.defaultSettings;
+      const storedSettings = this.storage.getItem(this.storageKey);
+      
+      if (storedSettings) {
+        return {
+          ...this.defaultSettings,
+          ...JSON.parse(storedSettings)
+        };
       }
       
-      // Extract the settings data from the BaseSettings object
-      const { id, created_at, updated_at, ...actualSettings } = settings[0];
-      
-      // Merge with default settings to ensure all properties exist
-      return {
-        ...this.defaultSettings,
-        ...actualSettings
-      };
+      return { ...this.defaultSettings };
     } catch (error) {
-      console.error('Erro ao obter configurações:', error);
-      return this.defaultSettings;
+      console.error('Error loading settings:', error);
+      return { ...this.defaultSettings };
     }
   }
 
-  // Salvar seção específica das configurações
-  public saveSection<K extends keyof Settings>(section: K, data: Partial<Settings[K]>): boolean {
+  private saveToStorage(): boolean {
     try {
-      const settings = this.getSettings();
-      const storageSettings = this.settingsStore.getAll();
+      this.storage.setItem(this.storageKey, JSON.stringify(this.settings));
       
-      // Create the updated settings object
-      const updatedSettings = {
-        ...settings,
-        [section]: {
-          ...settings[section],
-          ...data
-        }
-      };
-      
-      // Prepare the data for storage
-      const now = new Date().toISOString();
-      const baseSettings: BaseSettings = {
-        id: storageSettings.length > 0 ? storageSettings[0].id : 'default',
-        created_at: storageSettings.length > 0 ? storageSettings[0].created_at : now,
-        updated_at: now,
-        ...updatedSettings
-      };
-
-      if (storageSettings.length > 0) {
-        this.settingsStore.update(baseSettings.id, baseSettings);
-      } else {
-        this.settingsStore.add(baseSettings);
-      }
-
-      eventBus.publish(EVENTS.STORAGE_UPDATED, {
-        entity: this.settingsStore.getStorageKey(),
-        action: 'updated',
-        section
+      // Publish event for other components to listen to
+      eventBus.publish(EVENTS.STORAGE_UPDATED, { 
+        entity: 'mecanicapro_settings',
+        action: 'updated'
       });
-
+      
       return true;
     } catch (error) {
-      console.error(`Erro ao salvar configurações de ${String(section)}:`, error);
+      console.error('Error saving settings:', error);
       return false;
     }
   }
 
-  // Exportar todas as configurações
-  public exportSettings(): string {
+  public getSettings(): Settings {
+    // Return a deep copy to prevent accidental mutations
+    return JSON.parse(JSON.stringify(this.settings));
+  }
+
+  public saveSection<T extends keyof Settings>(
+    sectionName: T,
+    data: Partial<Settings[T]>
+  ): boolean {
     try {
-      return this.settingsStore.exportData();
+      if (sectionName === 'units' || sectionName === 'users') {
+        // For array sections, simply replace the array
+        this.settings[sectionName] = data as Settings[T];
+      } else {
+        // For object sections, merge with existing data
+        this.settings[sectionName] = {
+          ...this.settings[sectionName],
+          ...data
+        };
+      }
+      
+      return this.saveToStorage();
     } catch (error) {
-      console.error('Erro ao exportar configurações:', error);
-      return '';
+      console.error(`Error saving settings section ${String(sectionName)}:`, error);
+      return false;
     }
   }
 
-  // Importar configurações
+  public exportSettings(): string {
+    return JSON.stringify(this.settings, null, 2);
+  }
+
   public importSettings(jsonData: string): boolean {
     try {
-      return this.settingsStore.importData(jsonData);
+      const parsedSettings = JSON.parse(jsonData);
+      
+      // Validate structure
+      if (
+        typeof parsedSettings !== 'object' ||
+        parsedSettings === null ||
+        Array.isArray(parsedSettings)
+      ) {
+        throw new Error('Invalid settings format');
+      }
+      
+      // Merge with default settings to ensure all required fields
+      this.settings = {
+        ...this.defaultSettings,
+        ...parsedSettings
+      };
+      
+      const success = this.saveToStorage();
+      
+      if (success) {
+        eventBus.publish(EVENTS.STORAGE_UPDATED, { 
+          entity: 'mecanicapro_settings', 
+          action: 'imported' 
+        });
+      }
+      
+      return success;
     } catch (error) {
-      console.error('Erro ao importar configurações:', error);
+      console.error('Error importing settings:', error);
       return false;
     }
   }
 
-  // Backup das configurações
   public backupSettings(): string {
     try {
-      const settings = this.getSettings();
       const backup = {
         timestamp: new Date().toISOString(),
-        settings: settings
+        version: 1,
+        data: this.settings
       };
-      return JSON.stringify(backup);
+      
+      const backupStr = JSON.stringify(backup);
+      
+      // Store in a dedicated backup storage
+      const backups = this.getBackups();
+      backups.unshift(backup);
+      
+      // Keep only the latest N backups
+      const maxBackups = this.settings.app.backup.keepBackups || 5;
+      const trimmedBackups = backups.slice(0, maxBackups);
+      
+      this.storage.setItem('mecanicapro_settings_backups', JSON.stringify(trimmedBackups));
+      
+      // Update last backup date
+      this.settings.app.backup.lastBackup = backup.timestamp;
+      this.saveToStorage();
+      
+      return backupStr;
     } catch (error) {
-      console.error('Erro ao fazer backup das configurações:', error);
+      console.error('Error creating backup:', error);
       return '';
     }
   }
 
-  // Restaurar configurações de backup
   public restoreFromBackup(backupData: string): boolean {
     try {
-      const data = JSON.parse(backupData);
+      const backup = JSON.parse(backupData);
       
-      if (!data.settings) {
-        throw new Error('Dados de backup inválidos');
+      if (
+        !backup ||
+        !backup.timestamp ||
+        !backup.data ||
+        typeof backup.data !== 'object'
+      ) {
+        throw new Error('Invalid backup format');
       }
       
-      const settings = this.getSettings();
-      const baseSettings = settings as unknown as BaseSettings;
+      // Merge with default settings to ensure all required fields
+      this.settings = {
+        ...this.defaultSettings,
+        ...backup.data
+      };
       
-      if (baseSettings.id) {
-        this.settingsStore.update(baseSettings.id, {
-          ...data.settings,
-          id: baseSettings.id,
-          updated_at: new Date().toISOString()
-        } as unknown as BaseSettings);
-        
-        eventBus.publish(EVENTS.STORAGE_UPDATED, {
-          entity: this.settingsStore.getStorageKey(),
-          action: 'restored'
+      const success = this.saveToStorage();
+      
+      if (success) {
+        eventBus.publish(EVENTS.STORAGE_UPDATED, { 
+          entity: 'mecanicapro_settings', 
+          action: 'restored' 
         });
-        
-        return true;
       }
       
-      // Se não existir ID, criar novo
-      const now = new Date().toISOString();
-      this.settingsStore.add({
-        ...data.settings,
-        id: 'default',
-        created_at: now,
-        updated_at: now
-      } as unknown as BaseSettings);
-      
-      eventBus.publish(EVENTS.STORAGE_UPDATED, {
-        entity: this.settingsStore.getStorageKey(),
-        action: 'restored'
-      });
-      
-      return true;
+      return success;
     } catch (error) {
-      console.error('Erro ao restaurar configurações:', error);
+      console.error('Error restoring backup:', error);
       return false;
+    }
+  }
+
+  private getBackups(): any[] {
+    try {
+      const backupsStr = this.storage.getItem('mecanicapro_settings_backups');
+      return backupsStr ? JSON.parse(backupsStr) : [];
+    } catch (error) {
+      console.error('Error getting backups:', error);
+      return [];
     }
   }
 }
 
 export const settingsService = new SettingsService();
-export default settingsService;

@@ -14,6 +14,8 @@ import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
 import Appointments from "./pages/Appointments";
 import Orders from "./pages/Orders";
+import OrderDetails from "./pages/OrderDetails";
+import OrderForm from "./pages/OrderForm";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Marketing from "./pages/Marketing";
@@ -39,6 +41,9 @@ const App = () => (
             <Route path="/leads" element={<Leads />} />
             <Route path="/appointments" element={<Appointments />} />
             <Route path="/orders" element={<Orders />} />
+            <Route path="/orders/new" element={<OrderForm />} />
+            <Route path="/orders/:id" element={<OrderDetails />} />
+            <Route path="/orders/edit/:id" element={<OrderForm />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/marketing" element={<Marketing />} />

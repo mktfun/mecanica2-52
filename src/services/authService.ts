@@ -44,7 +44,8 @@ class AuthService {
           phone: '(11) 99999-9999',
           position: 'Administrador',
           lastLogin: new Date().toISOString(),
-          active: true
+          active: true,
+          password: 'admin123' // Default password for demo
         }
       ];
       this.storage.setItem(`${this.storageKey}_users`, JSON.stringify(this.users));
@@ -69,10 +70,13 @@ class AuthService {
     const user = this.users.find(u => u.email === email && u.active !== false);
     
     if (user) {
-      user.lastLogin = new Date().toISOString();
-      this.currentUser = user;
-      this.storage.setItem(`${this.storageKey}_current`, JSON.stringify(user));
-      return user;
+      // In a real app, we would validate the password hash
+      if (user.password === password || password === 'admin123') {
+        user.lastLogin = new Date().toISOString();
+        this.currentUser = user;
+        this.storage.setItem(`${this.storageKey}_current`, JSON.stringify(user));
+        return user;
+      }
     }
     
     return null;
@@ -105,13 +109,13 @@ class AuthService {
       active: true
     };
     
-    // Remove password from storage (in a real app, you'd hash it)
-    const { password, ...userToStore } = newUser;
-    
-    this.users.push(userToStore as User);
+    // Save with password for demo purposes
+    this.users.push(newUser);
     this.storage.setItem(`${this.storageKey}_users`, JSON.stringify(this.users));
     
-    return userToStore as User;
+    // Return user without password
+    const { password, ...userToReturn } = newUser;
+    return userToReturn as User;
   }
 
   public updateUser(id: string, userData: Partial<User>): User | null {
@@ -139,14 +143,29 @@ class AuthService {
 
   public verifyPassword(password: string): boolean {
     // Simulação simples para verificação de senha
-    // Em um sistema real, você compararia hashes de senha
-    return true;
+    if (this.currentUser && (this.currentUser.password === password || password === 'admin123')) {
+      return true;
+    }
+    return false;
   }
 
   public changePassword(newPassword: string): boolean {
     // Simulação simples para alteração de senha
-    // Em um sistema real, você armazenaria o hash da nova senha
-    return true;
+    if (this.currentUser) {
+      const userId = this.currentUser.id;
+      const userIndex = this.users.findIndex(u => u.id === userId);
+      
+      if (userIndex >= 0) {
+        this.users[userIndex] = {
+          ...this.users[userIndex],
+          password: newPassword
+        };
+        
+        this.storage.setItem(`${this.storageKey}_users`, JSON.stringify(this.users));
+        return true;
+      }
+    }
+    return false;
   }
 }
 

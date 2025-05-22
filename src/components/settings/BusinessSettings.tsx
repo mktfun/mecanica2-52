@@ -1,752 +1,702 @@
+
 import React, { useState, useEffect } from 'react';
-import { z } from 'zod';
+import { useSettings } from '@/hooks/useSettings';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, Edit2 } from 'lucide-react';
+import {
+  BusinessSettings as IBusinessSettings,
+  ServiceType,
+  VehicleCategory,
+  TaxSettings
+} from '@/types/settings';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import {
+} from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { 
   Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { toast } from '@/components/ui/sonner';
-import { BusinessSettings as BusinessSettingsType, ServiceType, VehicleCategory, TaxSettings } from '@/types/settings';
-import { useSettings } from '@/hooks/useSettings';
-
-// Esquema de validação para tipo de serviço
-const serviceTypeSchema = z.object({
-  id: z.string().optional(),
-  name: z.string().min(1, { message: 'Nome é obrigatório' }),
-  description: z.string(),
-  price: z.number().min(0).optional(),
-  estimatedTime: z.number().min(0).optional(),
-});
-
-// Esquema de validação para categoria de veículo
-const vehicleCategorySchema = z.object({
-  id: z.string().optional(),
-  name: z.string().min(1, { message: 'Nome é obrigatório' }),
-  description: z.string(),
-});
-
-// Esquema de validação para impostos
-const taxSchema = z.object({
-  name: z.string().min(1, { message: 'Nome é obrigatório' }),
-  percentage: z.number().min(0).max(100),
-  applies_to: z.array(z.string()),
-});
-
-// Esquema de validação para termos e condições
-const termsSchema = z.object({
-  termsAndConditions: z.string(),
-});
+  CardContent
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { X, Plus, Save } from "lucide-react";
 
 const BusinessSettings = () => {
-  const { settings, saveSection, loading } = useSettings('business');
-  const businessSettings = settings as BusinessSettingsType;
+  const { settings, saveSection } = useSettings('business');
   
-  const [isServiceDialogOpen, setIsServiceDialogOpen] = useState(false);
-  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
-  const [isTaxDialogOpen, setIsTaxDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<string | null>(null);
+  // Cast settings to BusinessSettings type
+  const businessSettings = settings as IBusinessSettings;
   
-  // Form para termos e condições
-  const termsForm = useForm<z.infer<typeof termsSchema>>({
-    resolver: zodResolver(termsSchema),
-    defaultValues: {
-      termsAndConditions: businessSettings?.termsAndConditions || '',
-    },
+  const [activeTab, setActiveTab] = useState("services");
+  const [termsAndConditions, setTermsAndConditions] = useState('');
+  
+  // Service type form
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
+  const [editingServiceIndex, setEditingServiceIndex] = useState<number | null>(null);
+  const [newService, setNewService] = useState<Partial<ServiceType>>({
+    name: '',
+    description: '',
+    price: 0,
+    estimatedTime: 0
   });
   
-  // Form para tipo de serviço
-  const serviceForm = useForm<z.infer<typeof serviceTypeSchema>>({
-    resolver: zodResolver(serviceTypeSchema),
-    defaultValues: {
+  // Vehicle category form
+  const [vehicleCategories, setVehicleCategories] = useState<VehicleCategory[]>([]);
+  const [editingCategoryIndex, setEditingCategoryIndex] = useState<number | null>(null);
+  const [newCategory, setNewCategory] = useState<Partial<VehicleCategory>>({
+    name: '',
+    description: ''
+  });
+  
+  // Tax settings form
+  const [taxes, setTaxes] = useState<TaxSettings[]>([]);
+  const [editingTaxIndex, setEditingTaxIndex] = useState<number | null>(null);
+  const [newTax, setNewTax] = useState<Partial<TaxSettings>>({
+    name: '',
+    percentage: 0,
+    applies_to: []
+  });
+  
+  useEffect(() => {
+    if (businessSettings) {
+      // Initialize state from settings
+      if (businessSettings.termsAndConditions) {
+        setTermsAndConditions(businessSettings.termsAndConditions);
+      }
+      
+      if (businessSettings.serviceTypes) {
+        setServiceTypes(businessSettings.serviceTypes);
+      }
+      
+      if (businessSettings.vehicleCategories) {
+        setVehicleCategories(businessSettings.vehicleCategories);
+      }
+      
+      if (businessSettings.taxes) {
+        setTaxes(businessSettings.taxes);
+      }
+    }
+  }, [businessSettings]);
+  
+  // Save all settings
+  const saveAllSettings = () => {
+    return saveSection('business', {
+      serviceTypes,
+      vehicleCategories,
+      taxes,
+      termsAndConditions
+    });
+  };
+  
+  // Service Type functions
+  const addServiceType = () => {
+    if (!newService.name || newService.price === undefined) return;
+    
+    const serviceType: ServiceType = {
+      id: Date.now().toString(),
+      name: newService.name || '',
+      description: newService.description,
+      price: newService.price || 0,
+      estimatedTime: newService.estimatedTime
+    };
+    
+    setServiceTypes([...serviceTypes, serviceType]);
+    setNewService({
       name: '',
       description: '',
       price: 0,
-      estimatedTime: 0,
-    },
-  });
+      estimatedTime: 0
+    });
+    
+    saveSection('business', {
+      ...businessSettings,
+      serviceTypes: [...serviceTypes, serviceType]
+    });
+  };
   
-  // Form para categoria de veículo
-  const categoryForm = useForm<z.infer<typeof vehicleCategorySchema>>({
-    resolver: zodResolver(vehicleCategorySchema),
-    defaultValues: {
+  const deleteServiceType = (index: number) => {
+    const updatedServices = [...serviceTypes];
+    updatedServices.splice(index, 1);
+    setServiceTypes(updatedServices);
+    
+    saveSection('business', {
+      ...businessSettings,
+      serviceTypes: updatedServices
+    });
+  };
+  
+  const startEditService = (index: number) => {
+    setEditingServiceIndex(index);
+    setNewService({ ...serviceTypes[index] });
+  };
+  
+  const updateServiceType = () => {
+    if (editingServiceIndex === null) return;
+    if (!newService.name || newService.price === undefined) return;
+    
+    const updatedService: ServiceType = {
+      id: serviceTypes[editingServiceIndex].id,
+      name: newService.name,
+      description: newService.description,
+      price: newService.price || 0,
+      estimatedTime: newService.estimatedTime
+    };
+    
+    const updatedServices = [...serviceTypes];
+    updatedServices[editingServiceIndex] = updatedService;
+    
+    setServiceTypes(updatedServices);
+    setNewService({
       name: '',
       description: '',
-    },
-  });
+      price: 0,
+      estimatedTime: 0
+    });
+    setEditingServiceIndex(null);
+    
+    saveSection('business', {
+      ...businessSettings,
+      serviceTypes: updatedServices
+    });
+  };
   
-  // Form para impostos
-  const taxForm = useForm<z.infer<typeof taxSchema>>({
-    resolver: zodResolver(taxSchema),
-    defaultValues: {
+  // Vehicle Category functions
+  const addVehicleCategory = () => {
+    if (!newCategory.name) return;
+    
+    const vehicleCategory: VehicleCategory = {
+      id: Date.now().toString(),
+      name: newCategory.name,
+      description: newCategory.description
+    };
+    
+    setVehicleCategories([...vehicleCategories, vehicleCategory]);
+    setNewCategory({
+      name: '',
+      description: ''
+    });
+    
+    saveSection('business', {
+      ...businessSettings,
+      vehicleCategories: [...vehicleCategories, vehicleCategory]
+    });
+  };
+  
+  const deleteVehicleCategory = (index: number) => {
+    const updatedCategories = [...vehicleCategories];
+    updatedCategories.splice(index, 1);
+    setVehicleCategories(updatedCategories);
+    
+    saveSection('business', {
+      ...businessSettings,
+      vehicleCategories: updatedCategories
+    });
+  };
+  
+  const startEditCategory = (index: number) => {
+    setEditingCategoryIndex(index);
+    setNewCategory({ ...vehicleCategories[index] });
+  };
+  
+  const updateVehicleCategory = () => {
+    if (editingCategoryIndex === null) return;
+    if (!newCategory.name) return;
+    
+    const updatedCategory: VehicleCategory = {
+      id: vehicleCategories[editingCategoryIndex].id,
+      name: newCategory.name,
+      description: newCategory.description
+    };
+    
+    const updatedCategories = [...vehicleCategories];
+    updatedCategories[editingCategoryIndex] = updatedCategory;
+    
+    setVehicleCategories(updatedCategories);
+    setNewCategory({
+      name: '',
+      description: ''
+    });
+    setEditingCategoryIndex(null);
+    
+    saveSection('business', {
+      ...businessSettings,
+      vehicleCategories: updatedCategories
+    });
+  };
+  
+  // Tax Settings functions
+  const addTax = () => {
+    if (!newTax.name || newTax.percentage === undefined) return;
+    
+    const tax: TaxSettings = {
+      name: newTax.name,
+      percentage: newTax.percentage,
+      applies_to: newTax.applies_to || ['services', 'parts']
+    };
+    
+    setTaxes([...taxes, tax]);
+    setNewTax({
       name: '',
       percentage: 0,
-      applies_to: [],
-    },
-  });
-  
-  // Salvar termos e condições
-  const onTermsSubmit = (data: z.infer<typeof termsSchema>) => {
-    const success = saveSection('business', {
-      termsAndConditions: data.termsAndConditions,
+      applies_to: []
     });
     
-    if (success) {
-      toast.success('Termos e condições salvos com sucesso');
-    }
-  };
-  
-  // Adicionar ou atualizar tipo de serviço
-  const onServiceSubmit = (data: z.infer<typeof serviceTypeSchema>) => {
-    const serviceTypes = [...(businessSettings.serviceTypes || [])];
-    
-    if (editingItem) {
-      // Atualizar serviço existente
-      const index = serviceTypes.findIndex(s => s.id === editingItem);
-      if (index !== -1) {
-        serviceTypes[index] = {
-          ...serviceTypes[index],
-          ...data,
-        };
-      }
-    } else {
-      // Adicionar novo serviço
-      serviceTypes.push({
-        ...data,
-        id: Date.now().toString(),
-      });
-    }
-    
-    const success = saveSection('business', { serviceTypes });
-    
-    if (success) {
-      toast.success(editingItem ? 'Serviço atualizado com sucesso' : 'Serviço adicionado com sucesso');
-      serviceForm.reset();
-      setIsServiceDialogOpen(false);
-      setEditingItem(null);
-    }
-  };
-  
-  // Adicionar ou atualizar categoria de veículo
-  const onCategorySubmit = (data: z.infer<typeof vehicleCategorySchema>) => {
-    const vehicleCategories = [...(businessSettings.vehicleCategories || [])];
-    
-    if (editingItem) {
-      // Atualizar categoria existente
-      const index = vehicleCategories.findIndex(c => c.id === editingItem);
-      if (index !== -1) {
-        vehicleCategories[index] = {
-          ...vehicleCategories[index],
-          ...data,
-        };
-      }
-    } else {
-      // Adicionar nova categoria
-      vehicleCategories.push({
-        ...data,
-        id: Date.now().toString(),
-      });
-    }
-    
-    const success = saveSection('business', { vehicleCategories });
-    
-    if (success) {
-      toast.success(editingItem ? 'Categoria atualizada com sucesso' : 'Categoria adicionada com sucesso');
-      categoryForm.reset();
-      setIsCategoryDialogOpen(false);
-      setEditingItem(null);
-    }
-  };
-  
-  // Adicionar ou atualizar imposto
-  const onTaxSubmit = (data: z.infer<typeof taxSchema>) => {
-    const taxes = [...(businessSettings.taxes || [])];
-    
-    if (editingItem) {
-      // Atualizar imposto existente
-      const index = taxes.findIndex(t => t.name === editingItem);
-      if (index !== -1) {
-        taxes[index] = data;
-      }
-    } else {
-      // Adicionar novo imposto
-      taxes.push(data);
-    }
-    
-    const success = saveSection('business', { taxes });
-    
-    if (success) {
-      toast.success(editingItem ? 'Imposto atualizado com sucesso' : 'Imposto adicionado com sucesso');
-      taxForm.reset();
-      setIsTaxDialogOpen(false);
-      setEditingItem(null);
-    }
-  };
-  
-  // Remover tipo de serviço
-  const removeServiceType = (id: string) => {
-    const serviceTypes = businessSettings.serviceTypes?.filter(s => s.id !== id) || [];
-    const success = saveSection('business', { serviceTypes });
-    
-    if (success) {
-      toast.success('Serviço removido com sucesso');
-    }
-  };
-  
-  // Remover categoria de veículo
-  const removeVehicleCategory = (id: string) => {
-    const vehicleCategories = businessSettings.vehicleCategories?.filter(c => c.id !== id) || [];
-    const success = saveSection('business', { vehicleCategories });
-    
-    if (success) {
-      toast.success('Categoria removida com sucesso');
-    }
-  };
-  
-  // Remover imposto
-  const removeTax = (name: string) => {
-    const taxes = businessSettings.taxes?.filter(t => t.name !== name) || [];
-    const success = saveSection('business', { taxes });
-    
-    if (success) {
-      toast.success('Imposto removido com sucesso');
-    }
-  };
-  
-  // Editar tipo de serviço
-  const editServiceType = (service: ServiceType) => {
-    serviceForm.reset({
-      id: service.id,
-      name: service.name,
-      description: service.description,
-      price: service.price,
-      estimatedTime: service.estimatedTime,
+    saveSection('business', {
+      ...businessSettings,
+      taxes: [...taxes, tax]
     });
-    setEditingItem(service.id);
-    setIsServiceDialogOpen(true);
   };
   
-  // Editar categoria de veículo
-  const editVehicleCategory = (category: VehicleCategory) => {
-    categoryForm.reset({
-      id: category.id,
-      name: category.name,
-      description: category.description,
+  const deleteTax = (index: number) => {
+    const updatedTaxes = [...taxes];
+    updatedTaxes.splice(index, 1);
+    setTaxes(updatedTaxes);
+    
+    saveSection('business', {
+      ...businessSettings,
+      taxes: updatedTaxes
     });
-    setEditingItem(category.id);
-    setIsCategoryDialogOpen(true);
   };
   
-  // Editar imposto
-  const editTax = (tax: TaxSettings) => {
-    taxForm.reset({
-      name: tax.name,
-      percentage: tax.percentage,
-      applies_to: tax.applies_to,
-    });
-    setEditingItem(tax.name);
-    setIsTaxDialogOpen(true);
+  const startEditTax = (index: number) => {
+    setEditingTaxIndex(index);
+    setNewTax({ ...taxes[index] });
   };
-
+  
+  const updateTax = () => {
+    if (editingTaxIndex === null) return;
+    if (!newTax.name || newTax.percentage === undefined) return;
+    
+    const updatedTax: TaxSettings = {
+      name: newTax.name,
+      percentage: newTax.percentage,
+      applies_to: newTax.applies_to || ['services', 'parts']
+    };
+    
+    const updatedTaxes = [...taxes];
+    updatedTaxes[editingTaxIndex] = updatedTax;
+    
+    setTaxes(updatedTaxes);
+    setNewTax({
+      name: '',
+      percentage: 0,
+      applies_to: []
+    });
+    setEditingTaxIndex(null);
+    
+    saveSection('business', {
+      ...businessSettings,
+      taxes: updatedTaxes
+    });
+  };
+  
+  // Save terms and conditions
+  const saveTermsAndConditions = () => {
+    saveSection('business', {
+      ...businessSettings,
+      termsAndConditions
+    });
+  };
+  
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold">Configurações de Negócio</h2>
-        <p className="text-sm text-gray-500">
-          Configure os tipos de serviço, categorias de veículos, impostos e termos e condições
-        </p>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Configurações do Negócio</h2>
       </div>
       
-      <Separator />
-      
-      {/* Tipos de Serviço */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Tipos de Serviço</CardTitle>
-            <CardDescription>
-              Gerencie os tipos de serviço oferecidos pela sua oficina
-            </CardDescription>
-          </div>
-          <Dialog open={isServiceDialogOpen} onOpenChange={setIsServiceDialogOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                onClick={() => {
-                  serviceForm.reset({
-                    name: '',
-                    description: '',
-                    price: 0,
-                    estimatedTime: 0,
-                  });
-                  setEditingItem(null);
-                }}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Adicionar Serviço
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingItem ? 'Editar Serviço' : 'Adicionar Serviço'}</DialogTitle>
-                <DialogDescription>
-                  Preencha os detalhes do tipo de serviço abaixo
-                </DialogDescription>
-              </DialogHeader>
-              
-              <Form {...serviceForm}>
-                <form onSubmit={serviceForm.handleSubmit(onServiceSubmit)} className="space-y-4">
-                  <FormField
-                    control={serviceForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={serviceForm.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Descrição</FormLabel>
-                        <FormControl>
-                          <Textarea {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={serviceForm.control}
-                      name="price"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Preço Base (R$)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              min="0" 
-                              step="0.01" 
-                              {...field}
-                              onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={serviceForm.control}
-                      name="estimatedTime"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tempo Estimado (min)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              min="0" 
-                              {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+      <Tabs defaultValue="services" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="services">Serviços</TabsTrigger>
+          <TabsTrigger value="vehicles">Categorias de Veículos</TabsTrigger>
+          <TabsTrigger value="taxes">Impostos e Taxas</TabsTrigger>
+          <TabsTrigger value="terms">Termos e Condições</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="services" className="space-y-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid gap-4">
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="col-span-2">
+                    <label htmlFor="serviceName" className="block text-sm font-medium text-gray-700 mb-1">
+                      Nome do Serviço
+                    </label>
+                    <Input 
+                      id="serviceName" 
+                      value={newService.name || ''} 
+                      onChange={(e) => setNewService({...newService, name: e.target.value})} 
+                      placeholder="Ex: Troca de Óleo"
                     />
                   </div>
                   
-                  <DialogFooter>
-                    <Button type="submit">
-                      {editingItem ? 'Atualizar' : 'Adicionar'}
+                  <div>
+                    <label htmlFor="servicePrice" className="block text-sm font-medium text-gray-700 mb-1">
+                      Preço (R$)
+                    </label>
+                    <Input 
+                      id="servicePrice"
+                      type="number" 
+                      value={newService.price || ''} 
+                      onChange={(e) => setNewService({...newService, price: parseFloat(e.target.value) || 0})} 
+                      placeholder="0,00"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="serviceTime" className="block text-sm font-medium text-gray-700 mb-1">
+                      Tempo Estimado (min)
+                    </label>
+                    <Input 
+                      id="serviceTime"
+                      type="number" 
+                      value={newService.estimatedTime || ''} 
+                      onChange={(e) => setNewService({...newService, estimatedTime: parseInt(e.target.value) || 0})} 
+                      placeholder="60"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label htmlFor="serviceDescription" className="block text-sm font-medium text-gray-700 mb-1">
+                    Descrição
+                  </label>
+                  <Textarea 
+                    id="serviceDescription"
+                    value={newService.description || ''} 
+                    onChange={(e) => setNewService({...newService, description: e.target.value})} 
+                    placeholder="Descrição detalhada do serviço"
+                    rows={2}
+                  />
+                </div>
+                
+                <div className="flex justify-end">
+                  {editingServiceIndex !== null ? (
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() =>  {
+                        setEditingServiceIndex(null);
+                        setNewService({
+                          name: '',
+                          description: '',
+                          price: 0,
+                          estimatedTime: 0
+                        });
+                      }}>
+                        Cancelar
+                      </Button>
+                      <Button onClick={updateServiceType}>
+                        Atualizar Serviço
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button onClick={addServiceType} disabled={!newService.name}>
+                      <Plus size={16} className="mr-2" />
+                      Adicionar Serviço
                     </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          {businessSettings.serviceTypes && businessSettings.serviceTypes.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Preço Base</TableHead>
-                  <TableHead>Tempo Estimado</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {businessSettings.serviceTypes.map((service) => (
-                  <TableRow key={service.id}>
-                    <TableCell className="font-medium">{service.name}</TableCell>
-                    <TableCell>{service.description}</TableCell>
-                    <TableCell>
-                      {service.price ? `R$ ${service.price.toFixed(2)}` : 'Variável'}
-                    </TableCell>
-                    <TableCell>
-                      {service.estimatedTime ? `${service.estimatedTime} min` : 'Variável'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => editServiceType(service)}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => removeServiceType(service.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-4 text-gray-500">
-              Nenhum tipo de serviço cadastrado
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <div className="bg-white rounded-md shadow">
+            <div className="p-4 border-b">
+              <h3 className="text-lg font-medium">Serviços Cadastrados</h3>
             </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Categorias de Veículos */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Categorias de Veículos</CardTitle>
-            <CardDescription>
-              Gerencie as categorias de veículos atendidos pela sua oficina
-            </CardDescription>
+            
+            {serviceTypes.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">
+                Nenhum serviço cadastrado
+              </div>
+            ) : (
+              <div className="divide-y">
+                {serviceTypes.map((service, index) => (
+                  <div key={service.id} className="p-4 hover:bg-gray-50 flex justify-between items-center">
+                    <div>
+                      <div className="font-medium">{service.name}</div>
+                      <div className="text-sm text-gray-500 mt-1">
+                        {service.description}
+                      </div>
+                      <div className="mt-1 flex gap-4 text-sm">
+                        <span>Preço: R$ {service.price.toFixed(2)}</span>
+                        {service.estimatedTime && <span>Tempo Estimado: {service.estimatedTime} min</span>}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => startEditService(index)}>
+                        Editar
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => deleteServiceType(index)}>
+                        <X size={16} />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                onClick={() => {
-                  categoryForm.reset({
-                    name: '',
-                    description: '',
-                  });
-                  setEditingItem(null);
-                }}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Adicionar Categoria
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingItem ? 'Editar Categoria' : 'Adicionar Categoria'}</DialogTitle>
-                <DialogDescription>
-                  Preencha os detalhes da categoria de veículo abaixo
-                </DialogDescription>
-              </DialogHeader>
-              
-              <Form {...categoryForm}>
-                <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
-                  <FormField
-                    control={categoryForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+        </TabsContent>
+        
+        <TabsContent value="vehicles" className="space-y-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="categoryName" className="block text-sm font-medium text-gray-700 mb-1">
+                      Nome da Categoria
+                    </label>
+                    <Input 
+                      id="categoryName" 
+                      value={newCategory.name || ''} 
+                      onChange={(e) => setNewCategory({...newCategory, name: e.target.value})} 
+                      placeholder="Ex: Carros de Passeio"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label htmlFor="categoryDescription" className="block text-sm font-medium text-gray-700 mb-1">
+                    Descrição
+                  </label>
+                  <Textarea 
+                    id="categoryDescription"
+                    value={newCategory.description || ''} 
+                    onChange={(e) => setNewCategory({...newCategory, description: e.target.value})} 
+                    placeholder="Descrição da categoria de veículo"
+                    rows={2}
                   />
-                  
-                  <FormField
-                    control={categoryForm.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Descrição</FormLabel>
-                        <FormControl>
-                          <Textarea {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <DialogFooter>
-                    <Button type="submit">
-                      {editingItem ? 'Atualizar' : 'Adicionar'}
+                </div>
+                
+                <div className="flex justify-end">
+                  {editingCategoryIndex !== null ? (
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() =>  {
+                        setEditingCategoryIndex(null);
+                        setNewCategory({
+                          name: '',
+                          description: ''
+                        });
+                      }}>
+                        Cancelar
+                      </Button>
+                      <Button onClick={updateVehicleCategory}>
+                        Atualizar Categoria
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button onClick={addVehicleCategory} disabled={!newCategory.name}>
+                      <Plus size={16} className="mr-2" />
+                      Adicionar Categoria
                     </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          {businessSettings.vehicleCategories && businessSettings.vehicleCategories.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {businessSettings.vehicleCategories.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell className="font-medium">{category.name}</TableCell>
-                    <TableCell>{category.description}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => editVehicleCategory(category)}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => removeVehicleCategory(category.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-4 text-gray-500">
-              Nenhuma categoria de veículo cadastrada
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <div className="bg-white rounded-md shadow">
+            <div className="p-4 border-b">
+              <h3 className="text-lg font-medium">Categorias de Veículos</h3>
             </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Impostos */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Impostos</CardTitle>
-            <CardDescription>
-              Configure os impostos aplicados aos serviços e produtos
-            </CardDescription>
+            
+            {vehicleCategories.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">
+                Nenhuma categoria cadastrada
+              </div>
+            ) : (
+              <div className="divide-y">
+                {vehicleCategories.map((category, index) => (
+                  <div key={category.id} className="p-4 hover:bg-gray-50 flex justify-between items-center">
+                    <div>
+                      <div className="font-medium">{category.name}</div>
+                      {category.description && (
+                        <div className="text-sm text-gray-500 mt-1">{category.description}</div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => startEditCategory(index)}>
+                        Editar
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => deleteVehicleCategory(index)}>
+                        <X size={16} />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <Dialog open={isTaxDialogOpen} onOpenChange={setIsTaxDialogOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                onClick={() => {
-                  taxForm.reset({
-                    name: '',
-                    percentage: 0,
-                    applies_to: [],
-                  });
-                  setEditingItem(null);
-                }}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Adicionar Imposto
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingItem ? 'Editar Imposto' : 'Adicionar Imposto'}</DialogTitle>
-                <DialogDescription>
-                  Preencha os detalhes do imposto abaixo
-                </DialogDescription>
-              </DialogHeader>
-              
-              <Form {...taxForm}>
-                <form onSubmit={taxForm.handleSubmit(onTaxSubmit)} className="space-y-4">
-                  <FormField
-                    control={taxForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome</FormLabel>
-                        <FormControl>
-                          <Input {...field} disabled={!!editingItem} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+        </TabsContent>
+        
+        <TabsContent value="taxes" className="space-y-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="taxName" className="block text-sm font-medium text-gray-700 mb-1">
+                      Nome do Imposto/Taxa
+                    </label>
+                    <Input 
+                      id="taxName" 
+                      value={newTax.name || ''} 
+                      onChange={(e) => setNewTax({...newTax, name: e.target.value})} 
+                      placeholder="Ex: ISS"
+                    />
+                  </div>
                   
-                  <FormField
-                    control={taxForm.control}
-                    name="percentage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Percentual (%)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min="0" 
-                            max="100" 
-                            step="0.01" 
-                            {...field}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Aqui poderia ter um seletor para applies_to */}
-                  
-                  <DialogFooter>
-                    <Button type="submit">
-                      {editingItem ? 'Atualizar' : 'Adicionar'}
+                  <div>
+                    <label htmlFor="taxPercentage" className="block text-sm font-medium text-gray-700 mb-1">
+                      Porcentagem (%)
+                    </label>
+                    <Input 
+                      id="taxPercentage"
+                      type="number"
+                      step="0.01"
+                      value={newTax.percentage || ''} 
+                      onChange={(e) => setNewTax({...newTax, percentage: parseFloat(e.target.value) || 0})} 
+                      placeholder="5.00"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm font-medium text-gray-700">Aplicar a:</label>
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      type="checkbox" 
+                      id="applyToServices"
+                      checked={newTax.applies_to?.includes('services') || false}
+                      onChange={(e) => {
+                        const currentAppliesTo = newTax.applies_to || [];
+                        setNewTax({
+                          ...newTax,
+                          applies_to: e.target.checked 
+                            ? [...currentAppliesTo, 'services']
+                            : currentAppliesTo.filter(item => item !== 'services')
+                        });
+                      }}
+                    />
+                    <label htmlFor="applyToServices" className="text-sm text-gray-700">Serviços</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      type="checkbox" 
+                      id="applyToParts"
+                      checked={newTax.applies_to?.includes('parts') || false}
+                      onChange={(e) => {
+                        const currentAppliesTo = newTax.applies_to || [];
+                        setNewTax({
+                          ...newTax,
+                          applies_to: e.target.checked 
+                            ? [...currentAppliesTo, 'parts']
+                            : currentAppliesTo.filter(item => item !== 'parts')
+                        });
+                      }}
+                    />
+                    <label htmlFor="applyToParts" className="text-sm text-gray-700">Peças</label>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end">
+                  {editingTaxIndex !== null ? (
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() =>  {
+                        setEditingTaxIndex(null);
+                        setNewTax({
+                          name: '',
+                          percentage: 0,
+                          applies_to: []
+                        });
+                      }}>
+                        Cancelar
+                      </Button>
+                      <Button onClick={updateTax}>
+                        Atualizar Taxa
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button onClick={addTax} disabled={!newTax.name}>
+                      <Plus size={16} className="mr-2" />
+                      Adicionar Taxa
                     </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          {businessSettings.taxes && businessSettings.taxes.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Percentual</TableHead>
-                  <TableHead>Aplica-se a</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {businessSettings.taxes.map((tax) => (
-                  <TableRow key={tax.name}>
-                    <TableCell className="font-medium">{tax.name}</TableCell>
-                    <TableCell>{tax.percentage}%</TableCell>
-                    <TableCell>{tax.applies_to.join(', ')}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => editTax(tax)}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => removeTax(tax.name)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-4 text-gray-500">
-              Nenhum imposto cadastrado
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <div className="bg-white rounded-md shadow">
+            <div className="p-4 border-b">
+              <h3 className="text-lg font-medium">Impostos e Taxas</h3>
             </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Termos e Condições */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Termos e Condições</CardTitle>
-          <CardDescription>
-            Configure os termos e condições para ordens de serviço e contratos
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...termsForm}>
-            <form onSubmit={termsForm.handleSubmit(onTermsSubmit)} className="space-y-4">
-              <FormField
-                control={termsForm.control}
-                name="termsAndConditions"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Termos e Condições</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field} 
-                        rows={10}
-                        placeholder="Digite aqui os termos e condições que serão exibidos em ordens de serviço e contratos..."
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Estes termos serão exibidos em ordens de serviço, orçamentos e contratos.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <Button type="submit" disabled={loading}>
-                Salvar Termos e Condições
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            
+            {taxes.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">
+                Nenhum imposto/taxa cadastrado
+              </div>
+            ) : (
+              <div className="divide-y">
+                {taxes.map((tax, index) => (
+                  <div key={index} className="p-4 hover:bg-gray-50 flex justify-between items-center">
+                    <div>
+                      <div className="font-medium">{tax.name}</div>
+                      <div className="text-sm text-gray-500 mt-1">
+                        <span className="font-medium">{tax.percentage}%</span> |
+                        Aplica-se a: {tax.applies_to.map(item => 
+                          item === 'services' ? 'Serviços' : 'Peças'
+                        ).join(', ')}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => startEditTax(index)}>
+                        Editar
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => deleteTax(index)}>
+                        <X size={16} />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="terms" className="space-y-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="termsAndConditions" className="block text-sm font-medium text-gray-700 mb-2">
+                    Termos e Condições
+                  </label>
+                  <Textarea 
+                    id="termsAndConditions"
+                    value={termsAndConditions} 
+                    onChange={(e) => setTermsAndConditions(e.target.value)} 
+                    placeholder="Digite os termos e condições de serviço da sua oficina..."
+                    rows={15}
+                    className="h-96"
+                  />
+                </div>
+                
+                <div className="flex justify-end">
+                  <Button onClick={saveTermsAndConditions}>
+                    <Save size={16} className="mr-2" />
+                    Salvar Termos
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
