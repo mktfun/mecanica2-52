@@ -1,4 +1,3 @@
-
 // Define types for the settings service
 export interface AccountProfile {
   name: string;
@@ -101,6 +100,15 @@ export interface BusinessSettings {
   vehicleCategories: VehicleCategory[];
   taxes: TaxSettings[];
   termsAndConditions: string;
+}
+
+// Add Permission interface
+export interface Permission {
+  module: string;
+  read: boolean;
+  create: boolean;
+  update: boolean;
+  delete: boolean;
 }
 
 export interface SystemUser {

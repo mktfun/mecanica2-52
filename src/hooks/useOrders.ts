@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { orderService } from '@/services/orderService';
 import { Order, OrderStatus, Customer, Vehicle, OrderService, OrderPart, OrderPhoto } from '@/types/order';
@@ -8,14 +7,14 @@ import { enhancedLeadsStore } from '@/core/storage/StorageService';
 import { eventBus, EVENTS } from '@/core/events/EventBus';
 
 // Type for order filter options
-interface OrderFilters {
-  status?: OrderStatus | 'all';
-  dateRange?: 'today' | 'week' | 'month' | 'all';
+export interface OrderFilters {
+  status: OrderStatus | 'all';
+  dateRange: 'today' | 'week' | 'month' | 'all';
   customerId?: string;
   vehicleId?: string;
-  searchTerm?: string;
-  sortBy?: 'date' | 'number' | 'customer' | 'total';
-  sortOrder?: 'asc' | 'desc';
+  searchTerm: string;
+  sortBy: 'date' | 'number' | 'customer' | 'total';
+  sortOrder: 'asc' | 'desc';
 }
 
 // Type for pagination options

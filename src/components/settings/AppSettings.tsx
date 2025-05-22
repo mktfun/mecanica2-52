@@ -1,696 +1,388 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSettings } from '@/hooks/useSettings';
+import { AppSettings as AppSettingsType } from '@/types/settings';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import { toast } from '@/components/ui/sonner';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Download, Upload, Laptop, Moon, Sun } from 'lucide-react';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { toast } from '@/components/ui/sonner';
-import { AppSettings as AppSettingsType, ThemeSettings, DisplaySettings, SecuritySettings } from '@/types/settings';
-import { useSettings } from '@/hooks/useSettings';
-
-// Esquema de validação para tema
-const themeSchema = z.object({
-  mode: z.enum(['light', 'dark', 'system']),
-  primaryColor: z.string().min(4),
-  accentColor: z.string().min(4)
-});
-
-// Esquema de validação para exibição
-const displaySchema = z.object({
-  itemsPerPage: z.number().min(5).max(100),
-  dateFormat: z.string().min(1),
-  timeFormat: z.enum(['12h', '24h']),
-  language: z.string().min(2)
-});
-
-// Esquema de validação para segurança
-const securitySchema = z.object({
-  requirePasswordChange: z.boolean(),
-  passwordExpirationDays: z.number().min(0),
-  sessionTimeout: z.number().min(1),
-  useEncryption: z.boolean()
-});
-
-// Esquema completo de configurações do aplicativo
-const appSettingsSchema = z.object({
-  theme: themeSchema,
-  display: displaySchema,
-  security: securitySchema
-});
 
 const AppSettings = () => {
-  const { settings, saveSection, loading, exportSettings, importSettings, backupSettings, restoreFromBackup } = useSettings('app');
-  // Explicitly cast settings to AppSettingsType
+  const { settings, saveSection } = useSettings('app');
   const appSettings = settings as AppSettingsType;
-  const [file, setFile] = useState<File | null>(null);
-  const [backupData, setBackupData] = useState<string | null>(null);
-  
-  // Configurações padrão
-  const defaultAppSettings: AppSettingsType = {
+
+  // Default settings
+  const defaultSettings: AppSettingsType = {
     theme: {
-      mode: 'light',
-      primaryColor: '#0050b3',
-      accentColor: '#1890ff'
+      mode: "light",
+      primaryColor: "#1890ff",
+      accentColor: "#52c41a"
     },
     display: {
       itemsPerPage: 10,
-      dateFormat: 'dd/MM/yyyy',
-      timeFormat: '24h',
-      language: 'pt-BR'
+      dateFormat: "DD/MM/YYYY",
+      timeFormat: "24h",
+      language: "pt-BR"
     },
     security: {
       requirePasswordChange: false,
       passwordExpirationDays: 90,
       sessionTimeout: 30,
       useEncryption: true
+    },
+    backup: {
+      autoBackup: true,
+      backupFrequency: "daily",
+      keepBackups: 7
     }
   };
 
-  // Form para configurações do aplicativo
-  const form = useForm<z.infer<typeof appSettingsSchema>>({
-    resolver: zodResolver(appSettingsSchema),
-    defaultValues: {
-      theme: appSettings?.theme || defaultAppSettings.theme,
-      display: {
-        ...defaultAppSettings.display,
-        ...appSettings?.display,
-        timeFormat: (appSettings?.display?.timeFormat as '12h' | '24h') || '24h'
-      },
-      security: appSettings?.security || defaultAppSettings.security
-    }
+  const [initialValues, setInitialValues] = useState(appSettings || defaultSettings);
+
+  useEffect(() => {
+    setInitialValues(appSettings || defaultSettings);
+  }, [settings]);
+
+  const appSchema = z.object({
+    theme: z.object({
+      mode: z.enum(["light", "dark", "system"]),
+      primaryColor: z.string().min(4).max(7),
+      accentColor: z.string().min(4).max(7)
+    }),
+    display: z.object({
+      itemsPerPage: z.number().min(5).max(100),
+      dateFormat: z.string(),
+      timeFormat: z.enum(["24h", "12h"]),
+      language: z.string()
+    }),
+    security: z.object({
+      requirePasswordChange: z.boolean(),
+      passwordExpirationDays: z.number().min(30).max(365),
+      sessionTimeout: z.number().min(15).max(120),
+      useEncryption: z.boolean()
+    }),
+    backup: z.object({
+      autoBackup: z.boolean(),
+      backupFrequency: z.enum(["daily", "weekly", "monthly"]),
+      keepBackups: z.number().min(1).max(30)
+    })
   });
 
-  // Handler para submissão do formulário
-  const onSubmit = (data: z.infer<typeof appSettingsSchema>) => {
-    const updatedSettings: AppSettingsType = {
-      theme: {
-        mode: data.theme.mode,
-        primaryColor: data.theme.primaryColor,
-        accentColor: data.theme.accentColor
-      },
-      display: {
-        itemsPerPage: data.display.itemsPerPage,
-        dateFormat: data.display.dateFormat,
-        timeFormat: data.display.timeFormat,
-        language: data.display.language
-      },
-      security: {
-        requirePasswordChange: data.security.requirePasswordChange,
-        passwordExpirationDays: data.security.passwordExpirationDays,
-        sessionTimeout: data.security.sessionTimeout,
-        useEncryption: data.security.useEncryption
-      }
-    };
-    
-    const success = saveSection('app', updatedSettings);
-    
-    if (success) {
-      toast.success('Configurações do aplicativo salvas com sucesso');
-    }
-  };
+  const form = useForm<z.infer<typeof appSchema>>({
+    resolver: zodResolver(appSchema),
+    defaultValues: {
+      theme: initialValues.theme,
+      display: initialValues.display,
+      security: initialValues.security,
+      backup: initialValues.backup
+    },
+    mode: "onChange"
+  });
 
-  // Handler para exportação de dados
-  const handleExport = () => {
+  // Handle save
+  const handleSave = (values: any) => {
     try {
-      const data = exportSettings();
-      
-      if (!data) {
-        toast.error('Erro ao exportar configurações');
-        return;
-      }
-      
-      // Criar blob e link para download
-      const blob = new Blob([data], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `mecanicapro_config_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast.success('Configurações exportadas com sucesso');
-    } catch (error) {
-      console.error('Erro ao exportar configurações:', error);
-      toast.error('Erro ao exportar configurações');
-    }
-  };
-
-  // Handler para seleção de arquivo
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-    }
-  };
-
-  // Handler para importação de arquivo
-  const handleImport = async () => {
-    if (!file) {
-      toast.error('Selecione um arquivo para importar');
-      return;
-    }
-    
-    try {
-      // Ler o conteúdo do arquivo
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        
-        try {
-          // Verificar se é um JSON válido
-          JSON.parse(content);
-          
-          // Importar configurações
-          const success = importSettings(content);
-          
-          if (success) {
-            setFile(null);
-            
-            // Atualizar formulário com novas configurações
-            const settings = JSON.parse(content);
-            if (settings && settings.app) {
-              form.reset(settings.app);
-            }
-            
-            toast.success('Configurações importadas com sucesso');
-          } else {
-            toast.error('Erro ao importar configurações');
-          }
-        } catch (jsonError) {
-          toast.error('O arquivo não contém um JSON válido');
+      // Save settings
+      saveSection('app', {
+        theme: {
+          mode: values.theme.mode,
+          primaryColor: values.theme.primaryColor,
+          accentColor: values.theme.accentColor
+        },
+        display: {
+          itemsPerPage: values.display.itemsPerPage,
+          dateFormat: values.display.dateFormat,
+          timeFormat: values.display.timeFormat,
+          language: values.display.language
+        },
+        security: {
+          requirePasswordChange: values.security.requirePasswordChange,
+          passwordExpirationDays: values.security.passwordExpirationDays,
+          sessionTimeout: values.security.sessionTimeout,
+          useEncryption: values.security.useEncryption
+        },
+        backup: {
+          autoBackup: values.backup?.autoBackup || defaultSettings.backup.autoBackup,
+          backupFrequency: values.backup?.backupFrequency || defaultSettings.backup.backupFrequency,
+          keepBackups: values.backup?.keepBackups || defaultSettings.backup.keepBackups
         }
-      };
-      
-      reader.readAsText(file);
+      });
+      toast.success("Configurações salvas com sucesso!");
     } catch (error) {
-      console.error('Erro ao importar configurações:', error);
-      toast.error('Erro ao importar configurações');
-    }
-  };
-
-  // Criar backup dos dados
-  const handleCreateBackup = () => {
-    const backup = backupSettings();
-    
-    if (backup) {
-      setBackupData(backup);
-      
-      // Criar blob e link para download
-      const blob = new Blob([backup], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `mecanicapro_backup_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast.success('Backup criado com sucesso');
-    }
-  };
-
-  // Restaurar backup
-  const handleRestoreBackup = async () => {
-    if (!file) {
-      toast.error('Selecione um arquivo de backup');
-      return;
-    }
-    
-    try {
-      // Ler o conteúdo do arquivo
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        
-        try {
-          // Verificar se é um backup válido
-          const data = JSON.parse(content);
-          
-          if (!data.timestamp || !data.settings) {
-            toast.error('O arquivo não contém um backup válido');
-            return;
-          }
-          
-          // Restaurar backup
-          const success = restoreFromBackup(content);
-          
-          if (success) {
-            setFile(null);
-            
-            // Atualizar formulário com configurações restauradas
-            if (data.settings && data.settings.app) {
-              form.reset(data.settings.app);
-            }
-            
-            toast.success('Backup restaurado com sucesso');
-          } else {
-            toast.error('Erro ao restaurar backup');
-          }
-        } catch (jsonError) {
-          toast.error('O arquivo não contém um backup válido');
-        }
-      };
-      
-      reader.readAsText(file);
-    } catch (error) {
-      console.error('Erro ao restaurar backup:', error);
-      toast.error('Erro ao restaurar backup');
+      console.error('Erro ao salvar configurações:', error);
+      toast.error("Erro ao salvar configurações");
     }
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold">Configurações do Aplicativo</h2>
-        <p className="text-sm text-gray-500">
-          Personalize a aparência e o comportamento do sistema
-        </p>
-      </div>
-      
-      <Separator />
-      
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Aparência</CardTitle>
-              <CardDescription>
-                Personalize o tema e as cores do aplicativo
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <FormField
-                control={form.control}
-                name="theme.mode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tema</FormLabel>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div 
-                        className={`p-4 rounded-lg border flex flex-col items-center cursor-pointer ${field.value === 'light' ? 'bg-primary/10 border-primary' : ''}`}
-                        onClick={() => form.setValue('theme.mode', 'light')}
-                      >
-                        <Sun className="h-6 w-6 mb-2" />
-                        <span>Claro</span>
-                      </div>
-                      
-                      <div 
-                        className={`p-4 rounded-lg border flex flex-col items-center cursor-pointer ${field.value === 'dark' ? 'bg-primary/10 border-primary' : ''}`}
-                        onClick={() => form.setValue('theme.mode', 'dark')}
-                      >
-                        <Moon className="h-6 w-6 mb-2" />
-                        <span>Escuro</span>
-                      </div>
-                      
-                      <div 
-                        className={`p-4 rounded-lg border flex flex-col items-center cursor-pointer ${field.value === 'system' ? 'bg-primary/10 border-primary' : ''}`}
-                        onClick={() => form.setValue('theme.mode', 'system')}
-                      >
-                        <Laptop className="h-6 w-6 mb-2" />
-                        <span>Sistema</span>
-                      </div>
-                    </div>
-                    <FormDescription>
-                      O tema será aplicado em todo o sistema
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <Card>
+      <CardHeader>
+        <CardTitle>Configurações do Aplicativo</CardTitle>
+        <CardDescription>
+          Gerencie as configurações gerais do seu aplicativo.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSave)} className="space-y-8">
+            <div>
+              <h3 className="text-xl font-medium mb-4">Tema</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="theme.mode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Modo</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o modo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="light">Claro</SelectItem>
+                          <SelectItem value="dark">Escuro</SelectItem>
+                          <SelectItem value="system">Sistema</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="theme.primaryColor"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Cor Primária</FormLabel>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="color"
-                          className="w-10 h-10 rounded border cursor-pointer"
-                          value={field.value}
-                          onChange={field.onChange}
-                        />
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                      </div>
-                      <FormMessage />
+                      <FormControl>
+                        <Input type="color" {...field} />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
-                
                 <FormField
                   control={form.control}
                   name="theme.accentColor"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Cor de Destaque</FormLabel>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="color"
-                          className="w-10 h-10 rounded border cursor-pointer"
-                          value={field.value}
-                          onChange={field.onChange}
-                        />
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                      </div>
-                      <FormMessage />
+                      <FormControl>
+                        <Input type="color" {...field} />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
               </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Exibição</CardTitle>
-              <CardDescription>
-                Configure as preferências de exibição
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <FormField
-                control={form.control}
-                name="display.itemsPerPage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Itens por página</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        min={5} 
-                        max={100} 
-                        {...field} 
-                        onChange={(e) => field.onChange(parseInt(e.target.value))} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Número de itens exibidos por página em listas e tabelas
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="display.dateFormat"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Formato de Data</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um formato de data" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="dd/MM/yyyy">DD/MM/AAAA (31/12/2023)</SelectItem>
-                        <SelectItem value="MM/dd/yyyy">MM/DD/AAAA (12/31/2023)</SelectItem>
-                        <SelectItem value="yyyy-MM-dd">AAAA-MM-DD (2023-12-31)</SelectItem>
-                        <SelectItem value="dd-MM-yyyy">DD-MM-AAAA (31-12-2023)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="display.timeFormat"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Formato de Hora</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um formato de hora" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="12h">12h (1:30 PM)</SelectItem>
-                        <SelectItem value="24h">24h (13:30)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="display.language"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Idioma</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um idioma" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="pt-BR">Português (Brasil)</SelectItem>
-                        <SelectItem value="en-US">English (US)</SelectItem>
-                        <SelectItem value="es">Español</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Segurança</CardTitle>
-              <CardDescription>
-                Configure as opções de segurança do aplicativo
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <FormField
-                control={form.control}
-                name="security.requirePasswordChange"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Exigir troca de senha</FormLabel>
-                      <FormDescription>
-                        Novos usuários serão solicitados a trocar a senha no primeiro login
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="security.passwordExpirationDays"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Expiração de Senha (dias)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        min={0} 
-                        {...field} 
-                        onChange={(e) => field.onChange(parseInt(e.target.value))} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Número de dias até que a senha expire (0 = sem expiração)
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="security.sessionTimeout"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tempo de Sessão (minutos)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        min={1} 
-                        {...field} 
-                        onChange={(e) => field.onChange(parseInt(e.target.value))} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Tempo de inatividade até que a sessão expire
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="security.useEncryption"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Usar Criptografia</FormLabel>
-                      <FormDescription>
-                        Criptografar dados sensíveis no armazenamento local
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-            
-            <CardFooter className="flex justify-end">
-              <Button type="submit" disabled={loading}>
-                Salvar Configurações
-              </Button>
-            </CardFooter>
-          </Card>
-        </form>
-      </Form>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Backup e Exportação</CardTitle>
-          <CardDescription>
-            Faça backup ou exporte suas configurações
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Exportar Configurações</h3>
-              <p className="text-sm text-gray-500">
-                Exporte todas as configurações do sistema para um arquivo JSON
-              </p>
-              <Button onClick={handleExport} className="w-full sm:w-auto">
-                <Download className="mr-2 h-4 w-4" />
-                Exportar Configurações
-              </Button>
             </div>
-            
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Importar Configurações</h3>
-              <p className="text-sm text-gray-500">
-                Importe configurações de um arquivo JSON exportado anteriormente
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Input
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileChange}
-                  className="flex-1"
+
+            <div>
+              <h3 className="text-xl font-medium mb-4">Display</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="display.itemsPerPage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Itens por Página</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
                 />
-                <Button onClick={handleImport} disabled={!file}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Importar
-                </Button>
+                <FormField
+                  control={form.control}
+                  name="display.dateFormat"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Formato da Data</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="display.timeFormat"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Formato da Hora</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="24h">24h</SelectItem>
+                          <SelectItem value="12h">12h</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="display.language"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Linguagem</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
-          </div>
-          
-          <Separator />
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Criar Backup Completo</h3>
-              <p className="text-sm text-gray-500">
-                Faça backup de todas as configurações e dados do sistema
-              </p>
-              <Button onClick={handleCreateBackup} className="w-full sm:w-auto">
-                <Download className="mr-2 h-4 w-4" />
-                Criar Backup
-              </Button>
-            </div>
-            
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Restaurar Backup</h3>
-              <p className="text-sm text-gray-500">
-                Restaure todas as configurações e dados do sistema a partir de um backup
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Input
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileChange}
-                  className="flex-1"
+
+            <div>
+              <h3 className="text-xl font-medium mb-4">Segurança</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="security.requirePasswordChange"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">
+                          Exigir troca de senha
+                        </FormLabel>
+                        <FormDescription>
+                          Exigir que os usuários troquem de senha periodicamente.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
                 />
-                <Button onClick={handleRestoreBackup} disabled={!file}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Restaurar
-                </Button>
+                <FormField
+                  control={form.control}
+                  name="security.passwordExpirationDays"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dias para expiração da senha</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="security.sessionTimeout"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tempo limite da sessão (minutos)</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="security.useEncryption"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">
+                          Usar criptografia
+                        </FormLabel>
+                        <FormDescription>
+                          Criptografar dados sensíveis para maior segurança.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+            <div>
+              <h3 className="text-xl font-medium mb-4">Backup</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="backup.autoBackup"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">
+                          Backup Automático
+                        </FormLabel>
+                        <FormDescription>
+                          Realizar backups automaticamente.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="backup.backupFrequency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Frequência de Backup</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="daily">Diário</SelectItem>
+                          <SelectItem value="weekly">Semanal</SelectItem>
+                          <SelectItem value="monthly">Mensal</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="backup.keepBackups"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Manter Backups por (dias)</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <Button type="submit">Salvar Configurações</Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 };
 

@@ -44,8 +44,8 @@ class OrderStorageService extends StorageService<Order> {
       ...(status === 'completed' ? { completedAt: new Date().toISOString() } : {})
     });
 
-    // Publish event
-    eventBus.publish(EVENTS.ORDER_STATUS_CHANGED, {
+    // Publish event using the correct constant
+    eventBus.publish(EVENTS.STATUS_CHANGED, {
       orderId: id,
       oldStatus: order.status,
       newStatus: status
@@ -102,7 +102,7 @@ export const orderService = new OrderStorageService();
 // Add order-related event types
 declare module '@/core/events/EventBus' {
   interface EventTypes {
-    ORDER_STATUS_CHANGED: {
+    STATUS_CHANGED: {
       orderId: string;
       oldStatus: OrderStatus;
       newStatus: OrderStatus;
@@ -123,7 +123,7 @@ declare module '@/core/events/EventBus' {
 
 // Add order-related events
 export const ORDER_EVENTS = {
-  STATUS_CHANGED: 'ORDER_STATUS_CHANGED',
+  STATUS_CHANGED: 'STATUS_CHANGED',
   CREATED: 'ORDER_CREATED',
   UPDATED: 'ORDER_UPDATED',
   DELETED: 'ORDER_DELETED'

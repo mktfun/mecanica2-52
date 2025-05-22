@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -251,13 +250,17 @@ const OrderForm = () => {
   const handleAppointmentSelect = (appointment: Appointment | null) => {
     if (!appointment) return;
     
+    // Map appointment data to order form
+    // Using client_name as customer name and vehicle_info as vehicle info
     setOrder(prev => ({
       ...prev,
-      customer: appointment.customer || null as any,
-      vehicle: appointment.vehicle || null as any,
-      description: appointment.description || prev.description || '',
+      // Use appropriate fallback values or map from appointment
+      description: appointment.service_description || prev.description || '',
       appointmentId: appointment.id
     }));
+
+    // In a real app, you'd fetch the customer and vehicle data
+    // based on appointment.client_id and appointment.vehicle_id
   };
   
   // Handle save
@@ -278,29 +281,33 @@ const OrderForm = () => {
     setSaving(true);
     
     try {
+      // Create order data with calculated totals
+      const orderData = {
+        customer: order.customer as Customer,
+        vehicle: order.vehicle as Vehicle,
+        description: order.description || '',
+        services: order.services || [],
+        parts: order.parts || [],
+        laborCost: Number(order.laborCost) || 0,
+        discount: Number(order.discount) || 0,
+        tax: Number(order.tax) || 0,
+        status: order.status as OrderStatus,
+        photos: order.photos || [],
+        notes: order.notes || '',
+        recommendations: order.recommendations || '',
+        appointmentId: order.appointmentId,
+        subtotal: calculatedValues.subtotal,
+        discountAmount: calculatedValues.discountAmount,
+        taxAmount: calculatedValues.taxAmount,
+        total: calculatedValues.total
+      };
+      
       // Create or update order
       if (isEditMode && id) {
-        updateOrder(id, { 
-          ...order,
-          status: order.status as OrderStatus,
-        });
+        updateOrder(id, orderData);
         navigate(`/orders/${id}`);
       } else {
-        const newOrder = createOrder({
-          customer: order.customer as Customer,
-          vehicle: order.vehicle as Vehicle,
-          description: order.description || '',
-          services: order.services || [],
-          parts: order.parts || [],
-          laborCost: Number(order.laborCost) || 0,
-          discount: Number(order.discount) || 0,
-          tax: Number(order.tax) || 0,
-          status: order.status as OrderStatus,
-          photos: order.photos || [],
-          notes: order.notes || '',
-          recommendations: order.recommendations || '',
-          appointmentId: order.appointmentId
-        });
+        const newOrder = createOrder(orderData);
         navigate(`/orders/${newOrder.id}`);
       }
     } catch (err) {

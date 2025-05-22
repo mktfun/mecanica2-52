@@ -1,5 +1,5 @@
 
-export type AppointmentStatus = 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
+export type AppointmentStatus = 'scheduled' | 'in-progress' | 'completed' | 'cancelled' | 'confirmed';
 
 export interface Appointment {
   id: string;
@@ -20,6 +20,9 @@ export interface Appointment {
   created_at: string;
   updated_at: string;
   estimated_cost?: number;
+  description?: string;
+  customer?: any; // Add customer property
+  vehicle?: any; // Add vehicle property
 }
 
 export interface AppointmentFilter {
