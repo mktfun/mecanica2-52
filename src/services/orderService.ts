@@ -45,7 +45,7 @@ class OrderStorageService extends StorageService<Order> {
     });
 
     // Publish event using the correct constant
-    eventBus.publish(EVENTS.STATUS_CHANGED, {
+    eventBus.publish(ORDER_EVENTS.STATUS_CHANGED, {
       orderId: id,
       oldStatus: order.status,
       newStatus: status

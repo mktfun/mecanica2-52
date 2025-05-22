@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription } from '@/components/ui/form';
 import { toast } from '@/components/ui/sonner';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -256,9 +256,9 @@ const AppSettings = () => {
                         <FormLabel className="text-sm">
                           Exigir troca de senha
                         </FormLabel>
-                        <FormDescription>
+                        <div className="text-sm text-muted-foreground">
                           Exigir que os usuários troquem de senha periodicamente.
-                        </FormDescription>
+                        </div>
                       </div>
                       <FormControl>
                         <Switch
@@ -302,9 +302,9 @@ const AppSettings = () => {
                         <FormLabel className="text-sm">
                           Usar criptografia
                         </FormLabel>
-                        <FormDescription>
+                        <div className="text-sm text-muted-foreground">
                           Criptografar dados sensíveis para maior segurança.
-                        </FormDescription>
+                        </div>
                       </div>
                       <FormControl>
                         <Switch
@@ -329,9 +329,9 @@ const AppSettings = () => {
                         <FormLabel className="text-sm">
                           Backup Automático
                         </FormLabel>
-                        <FormDescription>
+                        <div className="text-sm text-muted-foreground">
                           Realizar backups automaticamente.
-                        </FormDescription>
+                        </div>
                       </div>
                       <FormControl>
                         <Switch
