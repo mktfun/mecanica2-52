@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Input } from "@/components/ui/input";
 import { 
   Table, 
@@ -15,9 +14,10 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Button } from "@/components/ui/button";
 import { Search, Filter } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
-import { leadsStore } from "@/services/localStorageService";
+import { enhancedLeadsStore } from "@/core/storage/StorageService";
 import { Lead, LeadStatus } from "@/types/lead";
 import LeadDetailModal from './LeadDetailModal';
+import { useStorageData } from '@/hooks/useStorageData';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -31,8 +31,10 @@ const LEAD_STATUS_MAP: Record<LeadStatus, { label: string, variant: "default" | 
 };
 
 const LeadList = () => {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Usar hook de dados com atualização automática
+  const leads = useStorageData<Lead>(enhancedLeadsStore);
+  
+  const [isLoading, setIsLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,22 +43,6 @@ const LeadList = () => {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-
-  useEffect(() => {
-    fetchLeads();
-  }, []);
-
-  const fetchLeads = () => {
-    try {
-      setIsLoading(true);
-      const allLeads = leadsStore.getAll();
-      setLeads(allLeads);
-    } catch (error) {
-      console.error('Erro ao carregar leads:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const getSourceOptions = useMemo(() => {
     // Extract all unique sources from leads, making sure none are empty strings
@@ -70,7 +56,6 @@ const LeadList = () => {
       }
     });
     
-    console.info('Source options after processing:', Array.from(sourcesSet));
     return Array.from(sourcesSet);
   }, [leads]);
 
@@ -321,7 +306,6 @@ const LeadList = () => {
           lead={selectedLead}
           open={isDetailModalOpen}
           onOpenChange={setIsDetailModalOpen}
-          onLeadUpdated={fetchLeads}
         />
       )}
     </div>

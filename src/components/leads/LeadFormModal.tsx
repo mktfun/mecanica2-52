@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -16,7 +17,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 
-import { leadsStore } from '@/services/localStorageService';
+import { enhancedLeadsStore } from '@/core/storage/StorageService';
 import { Lead } from '@/types/lead';
 
 interface LeadFormModalProps {
@@ -84,29 +85,29 @@ const LeadFormModal = ({ lead, open, onOpenChange, onLeadAdded, onLeadUpdated }:
     try {
       const now = new Date().toISOString();
       
-      if (isEditing) {
-        // Atualizar lead existente
+      if (isEditing && lead) {
+        // Atualizar lead existente com serviço aprimorado
         const updatedLead = {
           ...lead,
           ...values,
           updated_at: now,
         };
         
-        leadsStore.update(lead.id, updatedLead);
+        enhancedLeadsStore.update(lead.id, updatedLead);
         onOpenChange(false);
         onLeadUpdated?.();
       } else {
-        // Criar novo lead
+        // Criar novo lead com serviço aprimorado
         const newLead = {
           ...values,
-          id: Date.now().toString(),
+          id: '', // Será gerado pelo StorageService
           created_at: now,
           updated_at: now,
           status_changed_at: now,
           last_interaction_at: now,
         } as Lead;
         
-        leadsStore.add(newLead);
+        enhancedLeadsStore.add(newLead);
         form.reset();
         onOpenChange(false);
         onLeadAdded?.();

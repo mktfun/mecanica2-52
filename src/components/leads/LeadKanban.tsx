@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -7,9 +6,10 @@ import { ptBR } from 'date-fns/locale';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import LeadDetailModal from './LeadDetailModal';
-import { leadsStore } from '@/services/localStorageService';
+import { enhancedLeadsStore } from '@/core/storage/StorageService';
 import { Lead, LeadStatus, LeadColumns } from '@/types/lead';
 import { toast } from 'sonner';
+import { useStorageData } from '@/hooks/useStorageData';
 
 const LEAD_STATUSES = [
   { id: 'new' as LeadStatus, title: 'Novos Leads' },
@@ -21,38 +21,21 @@ const LEAD_STATUSES = [
 ];
 
 const LeadKanban = () => {
-  const [columns, setColumns] = useState<LeadColumns>({});
-  const [isLoading, setIsLoading] = useState(true);
+  // Usar hook de dados com atualização automática para leads
+  const leads = useStorageData<Lead>(enhancedLeadsStore);
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  useEffect(() => {
-    fetchLeads();
-  }, []);
-
-  const fetchLeads = () => {
-    try {
-      setIsLoading(true);
-      const leads = leadsStore.getAll();
-      
-      // Organizar leads por status
-      const columnData: LeadColumns = {};
-      LEAD_STATUSES.forEach(status => {
-        columnData[status.id] = {
-          id: status.id,
-          title: status.title,
-          items: leads.filter(lead => lead.status === status.id) || []
-        };
-      });
-      
-      setColumns(columnData);
-    } catch (error) {
-      console.error('Erro ao carregar leads:', error);
-      toast.error('Não foi possível carregar os leads.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Organizar leads por status
+  const columns: LeadColumns = LEAD_STATUSES.reduce((acc, status) => {
+    acc[status.id] = {
+      id: status.id,
+      title: status.title,
+      items: leads.filter(lead => lead.status === status.id) || []
+    };
+    return acc;
+  }, {} as LeadColumns);
 
   const handleDragEnd = (result: any) => {
     const { source, destination, draggableId } = result;
@@ -76,53 +59,21 @@ const LeadKanban = () => {
     const lead = sourceColumn.items.find(item => item.id === draggableId);
     if (!lead) return;
     
-    // Criar novas arrays de items
-    const newSourceItems = [...sourceColumn.items];
-    newSourceItems.splice(source.index, 1);
-    
-    const newDestItems = [...destColumn.items];
-    
-    // Se movido para a mesma coluna, apenas reordenar
-    if (source.droppableId === destination.droppableId) {
-      newSourceItems.splice(destination.index, 0, lead);
-      
-      setColumns({
-        ...columns,
-        [source.droppableId]: {
-          ...sourceColumn,
-          items: newSourceItems
-        }
-      });
-    } else {
-      // Se movido para outra coluna, atualizar status e adicionar à nova coluna
+    // Se movido para outra coluna, atualizar status
+    if (source.droppableId !== destination.droppableId) {
       const updatedLead = {
         ...lead,
         status: destination.droppableId as LeadStatus,
         status_changed_at: new Date().toISOString()
       };
       
-      newDestItems.splice(destination.index, 0, updatedLead);
-      
-      setColumns({
-        ...columns,
-        [source.droppableId]: {
-          ...sourceColumn,
-          items: newSourceItems
-        },
-        [destination.droppableId]: {
-          ...destColumn,
-          items: newDestItems
-        }
-      });
-      
-      // Atualizar no localStorage
+      // Atualizar no localStorage com o serviço aprimorado
       try {
-        leadsStore.update(lead.id, updatedLead);
+        enhancedLeadsStore.update(lead.id, updatedLead);
         toast.success(`Lead movido para ${destColumn.title}`);
       } catch (error) {
         console.error('Erro ao atualizar status do lead:', error);
         toast.error('Não foi possível atualizar o status do lead.');
-        fetchLeads(); // Recarrega em caso de erro
       }
     }
   };
@@ -229,7 +180,6 @@ const LeadKanban = () => {
           lead={selectedLead}
           open={isDetailModalOpen}
           onOpenChange={setIsDetailModalOpen}
-          onLeadUpdated={fetchLeads}
         />
       )}
     </div>

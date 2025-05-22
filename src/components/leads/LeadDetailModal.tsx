@@ -12,8 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
 import { Lead } from '@/types/lead';
-import { leadsStore } from '@/services/localStorageService';
+import { enhancedLeadsStore } from '@/core/storage/StorageService';
 import LeadFormModal from './LeadFormModal';
+import { eventBus } from '@/core/events/EventBus';
 
 const LEAD_STATUS_LABELS: Record<string, string> = {
   'new': 'Novo Lead',
@@ -35,7 +36,7 @@ interface LeadDetailModalProps {
   lead: Lead;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onLeadUpdated: () => void;
+  onLeadUpdated?: () => void;
 }
 
 const LeadDetailModal = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetailModalProps) => {
@@ -77,7 +78,7 @@ const LeadDetailModal = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetail
         updated_at: now
       };
       
-      leadsStore.update(lead.id, updatedLead);
+      enhancedLeadsStore.update(lead.id, updatedLead);
       
       // Adicionar comentário ao histórico local
       const newHistoryItem: LeadHistoryItem = {
@@ -89,7 +90,9 @@ const LeadDetailModal = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetail
       
       setHistory([...history, newHistoryItem]);
       setNewComment('');
-      onLeadUpdated();
+      
+      // Notificar sobre atualização (opcional, pois o evento já será disparado pelo update)
+      onLeadUpdated?.();
       
       toast.success('Comentário adicionado');
     } catch (error) {
@@ -109,7 +112,7 @@ const LeadDetailModal = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetail
         updated_at: now
       };
       
-      leadsStore.update(lead.id, updatedLead);
+      enhancedLeadsStore.update(lead.id, updatedLead);
       
       // Adicionar interação ao histórico local
       const newHistoryItem: LeadHistoryItem = {
@@ -120,7 +123,16 @@ const LeadDetailModal = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetail
       };
       
       setHistory([...history, newHistoryItem]);
-      onLeadUpdated();
+      
+      // Notificar sobre atualização (opcional, pois o evento já será disparado pelo update)
+      onLeadUpdated?.();
+      
+      // Publicar evento de interação
+      eventBus.publish('lead:interaction', {
+        leadId: lead.id,
+        type,
+        timestamp: now
+      });
       
       toast.success('Interação registrada');
     } catch (error) {
