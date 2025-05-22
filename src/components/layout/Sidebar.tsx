@@ -26,7 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobile, setMobileMenuOpen }) => {
   
   const handleLogout = () => {
     authService.logout();
-    toast({
+    toast.add({
       description: "Logout realizado com sucesso"
     });
     navigate('/login');
