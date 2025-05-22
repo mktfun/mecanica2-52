@@ -6,7 +6,7 @@ import { PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useEventSubscription } from '@/hooks/useEventSubscription';
 
-import LeadKanban from "@/components/leads/LeadKanban";
+import CustomLeadKanban from "@/components/leads/CustomLeadKanban";
 import LeadList from "@/components/leads/LeadList";
 import LeadFormModal from "@/components/leads/LeadFormModal";
 
@@ -54,7 +54,7 @@ const Leads = () => {
           <TabsTrigger value="list">Lista</TabsTrigger>
         </TabsList>
         <TabsContent value="kanban" className="mt-0">
-          <LeadKanban />
+          <CustomLeadKanban />
         </TabsContent>
         <TabsContent value="list" className="mt-0">
           <LeadList />

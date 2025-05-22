@@ -65,5 +65,11 @@ export const EVENTS = {
   THEME_CHANGED: 'theme:changed',
   USER_LOGGED_IN: 'user:loggedIn',
   USER_LOGGED_OUT: 'user:loggedOut',
-  STORAGE_UPDATED: 'storage:updated'
+  STORAGE_UPDATED: 'storage:updated',
+  
+  // Novos eventos para o Kanban
+  KANBAN_COLUMNS_UPDATED: 'kanban:columns_updated',
+  KANBAN_COLUMN_REMOVED: 'kanban:column_removed',
+  LEAD_STATUS_CHANGED: 'lead:status_changed'
 };
+
