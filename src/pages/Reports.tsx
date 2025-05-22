@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { enhancedLeadsStore } from '@/core/storage/StorageService';
@@ -188,7 +189,7 @@ const Reports = () => {
     
     const byService = Object.entries(revenueByService).map(([service, revenue]) => ({
       service,
-      revenue
+      revenue: revenue as number
     }));
     
     // Ticket médio
@@ -215,9 +216,12 @@ const Reports = () => {
       sum + (typeof order.estimated_cost === 'number' ? order.estimated_cost : 0), 0);
     
     // Calcular variação percentual
-    const percentageChange = previousRevenue > 0 
-      ? ((totalRevenue - previousRevenue) / previousRevenue) * 100 
-      : totalRevenue > 0 ? 100 : 0;
+    let percentageChange = 0;
+    if (previousRevenue > 0) {
+      percentageChange = ((totalRevenue - previousRevenue) / previousRevenue) * 100;
+    } else if (totalRevenue > 0) {
+      percentageChange = 100;
+    }
     
     // Ranking de serviços mais lucrativos
     const topServices = [...byService].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
@@ -289,9 +293,9 @@ const Reports = () => {
     
     const bySource = Object.entries(leadsBySource).map(([source, total]) => ({
       source,
-      total,
+      total: total as number,
       converted: conversionBySource[source] || 0,
-      rate: total > 0 ? (conversionBySource[source] / total) * 100 : 0
+      rate: (total as number) > 0 ? ((conversionBySource[source] / (total as number)) * 100) : 0
     }));
     
     // Tempo médio de conversão (em dias)
@@ -352,7 +356,7 @@ const Reports = () => {
     
     const attendantEfficiency = Object.entries(byAttendant).map(([attendant, data]) => ({
       attendant,
-      ...data
+      ...(data as { total: number, converted: number, rate: number })
     }));
     
     return {
@@ -489,7 +493,8 @@ const Reports = () => {
         </Tabs>
       )}
       
-      <style jsx global>{`
+      <style>
+        {`
         @media print {
           .print\\:hidden {
             display: none !important;
@@ -498,7 +503,8 @@ const Reports = () => {
             break-inside: avoid;
           }
         }
-      `}</style>
+        `}
+      </style>
     </div>
   );
 };
