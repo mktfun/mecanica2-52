@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/sonner';
-import { AppSettings as AppSettingsType } from '@/types/settings';
+import { AppSettings as AppSettingsType, ThemeSettings, DisplaySettings, SecuritySettings } from '@/types/settings';
 import { useSettings } from '@/hooks/useSettings';
 
 // Esquema de validação para tema
@@ -68,6 +68,7 @@ const appSettingsSchema = z.object({
 
 const AppSettings = () => {
   const { settings, saveSection, loading, exportSettings, importSettings, backupSettings, restoreFromBackup } = useSettings('app');
+  const appSettings = settings as AppSettingsType;
   const [file, setFile] = useState<File | null>(null);
   const [backupData, setBackupData] = useState<string | null>(null);
   
@@ -95,12 +96,32 @@ const AppSettings = () => {
   // Form para configurações do aplicativo
   const form = useForm<z.infer<typeof appSettingsSchema>>({
     resolver: zodResolver(appSettingsSchema),
-    defaultValues: settings || defaultAppSettings
+    defaultValues: appSettings || defaultAppSettings
   });
 
   // Handler para submissão do formulário
   const onSubmit = (data: z.infer<typeof appSettingsSchema>) => {
-    const success = saveSection('app', data);
+    const updatedSettings: AppSettingsType = {
+      theme: {
+        mode: data.theme.mode,
+        primaryColor: data.theme.primaryColor,
+        accentColor: data.theme.accentColor
+      },
+      display: {
+        itemsPerPage: data.display.itemsPerPage,
+        dateFormat: data.display.dateFormat,
+        timeFormat: data.display.timeFormat,
+        language: data.display.language
+      },
+      security: {
+        requirePasswordChange: data.security.requirePasswordChange,
+        passwordExpirationDays: data.security.passwordExpirationDays,
+        sessionTimeout: data.security.sessionTimeout,
+        useEncryption: data.security.useEncryption
+      }
+    };
+    
+    const success = saveSection('app', updatedSettings);
     
     if (success) {
       toast.success('Configurações do aplicativo salvas com sucesso');

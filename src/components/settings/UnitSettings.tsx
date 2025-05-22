@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -40,7 +39,7 @@ import {
   AlertTitle,
 } from '@/components/ui/alert';
 import { toast } from '@/components/ui/sonner';
-import { Unit, WeeklyHours } from '@/types/settings';
+import { Unit, WeeklyHours, UnitSettings as UnitSettingsType } from '@/types/settings';
 import { useSettings } from '@/hooks/useSettings';
 
 // Dias da semana para horários
@@ -80,6 +79,7 @@ const unitSchema = z.object({
 
 const UnitSettings = () => {
   const { settings, saveSection, loading } = useSettings('units');
+  const unitSettings = settings as UnitSettingsType;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean, unitId: string | null }>({
@@ -88,7 +88,7 @@ const UnitSettings = () => {
   });
 
   // Obter unidades ou array vazio
-  const units = settings?.units || [];
+  const units = unitSettings?.units || [];
 
   // Form para unidade
   const unitForm = useForm<z.infer<typeof unitSchema>>({

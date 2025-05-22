@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Building, Sliders, Briefcase, Users } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';

@@ -8,7 +8,7 @@ class SettingsService {
   private defaultSettings: Settings;
 
   constructor() {
-    this.settingsStore = new StorageService<BaseSettings>("settings");
+    this.settingsStore = new StorageService<BaseSettings>("mecanicapro_settings");
     
     // Definir configurações padrão
     this.defaultSettings = {
@@ -122,7 +122,7 @@ class SettingsService {
         ...this.defaultSettings,
         created_at: now,
         updated_at: now
-      });
+      } as unknown as BaseSettings);
     }
   }
 
@@ -131,6 +131,9 @@ class SettingsService {
     try {
       this.initialize();
       const settings = this.settingsStore.getAll();
+      if (settings.length === 0) {
+        return this.defaultSettings;
+      }
       return settings[0] as unknown as Settings;
     } catch (error) {
       console.error('Erro ao obter configurações:', error);
@@ -149,10 +152,15 @@ class SettingsService {
           ...data
         },
         updated_at: new Date().toISOString()
-      };
+      } as unknown as BaseSettings;
 
-      if (settings.id) {
-        this.settingsStore.update(settings.id, updated);
+      if ('id' in settings) {
+        this.settingsStore.update((settings as unknown as BaseSettings).id, updated);
+      } else {
+        const baseSettings = updated as unknown as BaseSettings;
+        baseSettings.id = 'default';
+        baseSettings.created_at = new Date().toISOString();
+        this.settingsStore.add(baseSettings);
       }
 
       eventBus.publish(EVENTS.STORAGE_UPDATED, {
@@ -163,7 +171,7 @@ class SettingsService {
 
       return true;
     } catch (error) {
-      console.error(`Erro ao salvar configurações de ${section}:`, error);
+      console.error(`Erro ao salvar configurações de ${String(section)}:`, error);
       return false;
     }
   }
@@ -213,13 +221,14 @@ class SettingsService {
       }
       
       const settings = this.getSettings();
+      const baseSettings = settings as unknown as BaseSettings;
       
-      if (settings.id) {
-        this.settingsStore.update(settings.id, {
+      if (baseSettings.id) {
+        this.settingsStore.update(baseSettings.id, {
           ...data.settings,
-          id: settings.id,
+          id: baseSettings.id,
           updated_at: new Date().toISOString()
-        });
+        } as unknown as BaseSettings);
         
         eventBus.publish(EVENTS.STORAGE_UPDATED, {
           entity: this.settingsStore.getStorageKey(),
@@ -229,7 +238,21 @@ class SettingsService {
         return true;
       }
       
-      return false;
+      // Se não existir ID, criar novo
+      const now = new Date().toISOString();
+      this.settingsStore.add({
+        ...data.settings,
+        id: 'default',
+        created_at: now,
+        updated_at: now
+      } as unknown as BaseSettings);
+      
+      eventBus.publish(EVENTS.STORAGE_UPDATED, {
+        entity: this.settingsStore.getStorageKey(),
+        action: 'restored'
+      });
+      
+      return true;
     } catch (error) {
       console.error('Erro ao restaurar configurações:', error);
       return false;
