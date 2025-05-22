@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -37,7 +36,7 @@ const leadFormSchema = z.object({
   vehicle_year: z.string().regex(/^\d{4}$/, 'Ano deve conter 4 dígitos'),
   service_interest: z.string().min(3, 'Informe o serviço de interesse'),
   source: z.string().min(2, 'Informe a fonte do lead'),
-  potential_value: z.string().transform(val => Number(val) || 0),
+  potential_value: z.coerce.number().min(0, 'Valor deve ser positivo'),
   assigned_to: z.string().min(2, 'Informe o responsável pelo lead'),
   notes: z.string().optional(),
   status: z.string().default('new')
@@ -60,7 +59,7 @@ const LeadFormModal = ({ lead, open, onOpenChange, onLeadAdded, onLeadUpdated }:
           vehicle_year: lead.vehicle_year,
           service_interest: lead.service_interest,
           source: lead.source,
-          potential_value: String(lead.potential_value || 0),
+          potential_value: lead.potential_value,
           assigned_to: lead.assigned_to,
           notes: lead.notes || '',
           status: lead.status,
@@ -74,7 +73,7 @@ const LeadFormModal = ({ lead, open, onOpenChange, onLeadAdded, onLeadUpdated }:
           vehicle_year: new Date().getFullYear().toString(),
           service_interest: '',
           source: 'Site',
-          potential_value: '0',
+          potential_value: 0,
           assigned_to: '',
           notes: '',
           status: 'new',
@@ -91,7 +90,6 @@ const LeadFormModal = ({ lead, open, onOpenChange, onLeadAdded, onLeadUpdated }:
           ...lead,
           ...values,
           updated_at: now,
-          potential_value: Number(values.potential_value)
         };
         
         leadsStore.update(lead.id, updatedLead);
@@ -106,7 +104,6 @@ const LeadFormModal = ({ lead, open, onOpenChange, onLeadAdded, onLeadUpdated }:
           updated_at: now,
           status_changed_at: now,
           last_interaction_at: now,
-          potential_value: Number(values.potential_value)
         } as Lead;
         
         leadsStore.add(newLead);
@@ -265,7 +262,7 @@ const LeadFormModal = ({ lead, open, onOpenChange, onLeadAdded, onLeadUpdated }:
                   <FormItem>
                     <FormLabel>Valor Potencial (R$)</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="0,00" {...field} />
+                      <Input type="number" min="0" step="0.01" placeholder="0,00" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
