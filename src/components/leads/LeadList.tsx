@@ -50,6 +50,8 @@ const LeadList = () => {
     try {
       setIsLoading(true);
       const allLeads = leadsStore.getAll();
+      // Log leads to debug potential empty sources
+      console.log("All leads:", allLeads);
       setLeads(allLeads);
     } catch (error) {
       console.error('Erro ao carregar leads:', error);
@@ -59,12 +61,13 @@ const LeadList = () => {
   };
 
   const getSourceOptions = useMemo(() => {
-    // Extrai todas as fontes únicas dos leads e garante que não haja valores vazios
+    // Extract all unique sources from leads and ensure no empty strings
     const sources = [...new Set(leads.map(lead => {
-      // Replace empty strings with "unknown"
-      return lead.source ? lead.source : "unknown";
+      // Replace empty strings, null, or undefined with "unknown"
+      return (lead.source && lead.source.trim() !== '') ? lead.source : "unknown";
     }))];
-    console.log("Source options:", sources); // For debugging
+    
+    console.log("Source options after processing:", sources); // For debugging
     return sources;
   }, [leads]);
 
@@ -73,8 +76,11 @@ const LeadList = () => {
       // Filtrar por status
       if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
       
-      // Filtrar por fonte
-      if (sourceFilter !== 'all' && lead.source !== sourceFilter) return false;
+      // Filtrar por fonte - handle empty sources
+      if (sourceFilter !== 'all') {
+        const leadSource = (lead.source && lead.source.trim() !== '') ? lead.source : "unknown";
+        if (leadSource !== sourceFilter) return false;
+      }
       
       // Filtrar por pesquisa
       if (searchQuery) {
@@ -184,11 +190,15 @@ const LeadList = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas Fontes</SelectItem>
-              {getSourceOptions.map((source) => (
-                <SelectItem key={source} value={source}>
-                  {source === "unknown" ? "Desconhecido" : source}
-                </SelectItem>
-              ))}
+              {getSourceOptions.length > 0 ? (
+                getSourceOptions.map((source) => (
+                  <SelectItem key={source} value={source}>
+                    {source === "unknown" ? "Desconhecido" : source}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="no_sources">Sem fontes</SelectItem>
+              )}
             </SelectContent>
           </Select>
 
@@ -256,8 +266,8 @@ const LeadList = () => {
                       <TableCell>
                         {lead.vehicle_brand} {lead.vehicle_model} ({lead.vehicle_year})
                       </TableCell>
-                      <TableCell>{lead.service_interest}</TableCell>
-                      <TableCell>{lead.source}</TableCell>
+                      <TableCell>{lead.service_interest || "Não especificado"}</TableCell>
+                      <TableCell>{lead.source || "Desconhecido"}</TableCell>
                       <TableCell>
                         <Badge variant={LEAD_STATUS_MAP[lead.status]?.variant || 'outline'}>
                           {LEAD_STATUS_MAP[lead.status]?.label || lead.status}
