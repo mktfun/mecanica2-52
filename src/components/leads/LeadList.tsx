@@ -59,20 +59,30 @@ const LeadList = () => {
   };
 
   const getSourceOptions = useMemo(() => {
-    // Extrai todas as fontes únicas dos leads
-    const sources = [...new Set(leads.map(lead => lead.source))];
-    return sources;
+    // Extract all unique sources from leads, making sure none are empty strings
+    const sourcesSet = new Set<string>();
+    
+    leads.forEach(lead => {
+      // Make sure we don't add empty strings to our sources list
+      const source = lead.source?.trim() || "Desconhecido";
+      if (source) {
+        sourcesSet.add(source);
+      }
+    });
+    
+    console.info('Source options after processing:', Array.from(sourcesSet));
+    return Array.from(sourcesSet);
   }, [leads]);
 
   const filteredLeads = useMemo(() => {
     return leads.filter(lead => {
-      // Filtrar por status
+      // Filter by status
       if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
       
-      // Filtrar por fonte
+      // Filter by source
       if (sourceFilter !== 'all' && lead.source !== sourceFilter) return false;
       
-      // Filtrar por pesquisa
+      // Filter by search
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         return (
@@ -84,24 +94,24 @@ const LeadList = () => {
       
       return true;
     }).sort((a, b) => {
-      // Ordenar por campo escolhido
+      // Sort by selected field
       let aValue = a[sortBy as keyof Lead];
       let bValue = b[sortBy as keyof Lead];
       
-      // Converter para número se for valor potencial
+      // Convert to number for potential value
       if (sortBy === 'potential_value') {
         aValue = Number(aValue);
         bValue = Number(bValue);
       }
       
-      // Ordenar
+      // Sort
       if (aValue < bValue) return sortDir === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortDir === 'asc' ? 1 : -1;
       return 0;
     });
   }, [leads, statusFilter, sourceFilter, searchQuery, sortBy, sortDir]);
 
-  // Paginação
+  // Pagination
   const totalPages = Math.ceil(filteredLeads.length / ITEMS_PER_PAGE);
   const paginatedLeads = filteredLeads.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
@@ -180,11 +190,15 @@ const LeadList = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas Fontes</SelectItem>
-              {getSourceOptions.map((source) => (
-                <SelectItem key={source} value={source}>
-                  {source}
-                </SelectItem>
-              ))}
+              {getSourceOptions.length > 0 ? (
+                getSourceOptions.map((source) => (
+                  <SelectItem key={source} value={source}>
+                    {source}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="no-sources">Sem fontes</SelectItem>
+              )}
             </SelectContent>
           </Select>
 
@@ -252,8 +266,8 @@ const LeadList = () => {
                       <TableCell>
                         {lead.vehicle_brand} {lead.vehicle_model} ({lead.vehicle_year})
                       </TableCell>
-                      <TableCell>{lead.service_interest}</TableCell>
-                      <TableCell>{lead.source}</TableCell>
+                      <TableCell>{lead.service_interest || "N/A"}</TableCell>
+                      <TableCell>{lead.source || "Desconhecido"}</TableCell>
                       <TableCell>
                         <Badge variant={LEAD_STATUS_MAP[lead.status]?.variant || 'outline'}>
                           {LEAD_STATUS_MAP[lead.status]?.label || lead.status}
