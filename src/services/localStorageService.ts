@@ -44,8 +44,12 @@ class LocalStorageService {
       }
       
       // Adiciona timestamps
-      item.created_at = new Date().toISOString();
-      item.updated_at = new Date().toISOString();
+      if (!item.created_at) {
+        item.created_at = new Date().toISOString();
+      }
+      if (!item.updated_at) {
+        item.updated_at = new Date().toISOString();
+      }
       
       items.push(item);
       localStorage.setItem(this.storeName, JSON.stringify(items));
@@ -70,7 +74,11 @@ class LocalStorageService {
       // Mantém o ID e created_at originais
       updatedItem.id = id;
       updatedItem.created_at = items[index].created_at;
-      updatedItem.updated_at = new Date().toISOString();
+      
+      // Atualiza o updated_at se não for especificado
+      if (!updatedItem.updated_at) {
+        updatedItem.updated_at = new Date().toISOString();
+      }
       
       items[index] = updatedItem;
       localStorage.setItem(this.storeName, JSON.stringify(items));
@@ -145,5 +153,6 @@ export const appointmentsStore = new LocalStorageService('appointments');
 export const ordersStore = new LocalStorageService('orders');
 export const inventoryStore = new LocalStorageService('inventory');
 export const financialStore = new LocalStorageService('financial');
+export const kanbanConfigStore = new LocalStorageService('kanbanConfig');
 
 export default LocalStorageService;
