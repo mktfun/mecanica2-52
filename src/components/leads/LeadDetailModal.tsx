@@ -1,297 +1,181 @@
 import React, { useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { toast } from "sonner";
-
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { formatCurrency } from "@/utils/formatters";
-import { Lead } from '@/types/lead';
-import { enhancedLeadsStore } from '@/core/storage/StorageService';
+import { Separator } from "@/components/ui/separator";
+import { Lead } from "@/types/lead";
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Car, Phone, Mail, Calendar, Coins, FileText, User, Tag } from 'lucide-react';
+import { formatCurrency } from '@/utils/formatters';
+import { toast } from 'sonner';
 import { LeadFormModal } from './LeadFormModal';
-import { eventBus } from '@/core/events/EventBus';
-
-const LEAD_STATUS_LABELS: Record<string, string> = {
-  'new': 'Novo Lead',
-  'contacted': 'Primeiro Contato',
-  'negotiation': 'Em Negociação',
-  'scheduled': 'Agendado',
-  'converted': 'Convertido',
-  'lost': 'Perdido'
-};
-
-interface LeadHistoryItem {
-  id: string;
-  timestamp: string;
-  text: string;
-  type: 'comment' | 'status' | 'interaction';
-}
+import { useLeads } from '@/hooks/useLeads';
 
 interface LeadDetailModalProps {
   lead: Lead;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onLeadUpdated?: () => void;
 }
 
-const LeadDetailModal = ({ lead, open, onOpenChange, onLeadUpdated }: LeadDetailModalProps) => {
+const LEAD_STATUS_MAP: Record<string, { label: string, color: string }> = {
+  'new': { label: 'Novo', color: 'text-blue-500 bg-blue-50' },
+  'contacted': { label: 'Contactado', color: 'text-indigo-500 bg-indigo-50' },
+  'negotiation': { label: 'Em Negociação', color: 'text-purple-500 bg-purple-50' },
+  'scheduled': { label: 'Agendado', color: 'text-amber-500 bg-amber-50' },
+  'converted': { label: 'Convertido', color: 'text-green-500 bg-green-50' },
+  'lost': { label: 'Perdido', color: 'text-red-500 bg-red-50' }
+};
+
+const LeadDetailModal = ({ lead, open, onOpenChange }: LeadDetailModalProps) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [newComment, setNewComment] = useState('');
-  const [history, setHistory] = useState<LeadHistoryItem[]>(() => {
-    // Criar histórico inicial com base nos timestamps do lead
-    const initialHistory: LeadHistoryItem[] = [
-      {
-        id: '1',
-        timestamp: lead.created_at,
-        text: 'Lead criado',
-        type: 'status'
+  const { updateLead } = useLeads();
+
+  const handleEditClick = () => {
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditComplete = () => {
+    setIsEditModalOpen(false);
+    toast.success("Lead atualizado com sucesso!");
+  };
+
+  const getFormattedDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), "PP 'às' p", { locale: ptBR });
+    } catch (error) {
+      return "Data inválida";
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusInfo = LEAD_STATUS_MAP[status] || { label: status, color: 'text-gray-500 bg-gray-50' };
+    
+    return (
+      <Badge className={`${statusInfo.color} px-2 py-1 text-xs`}>
+        {statusInfo.label}
+      </Badge>
+    );
+  };
+
+  const handleMarkAsLost = async () => {
+    if (confirm("Tem certeza que deseja marcar este lead como perdido?")) {
+      try {
+        await updateLead(lead.id, { status: 'lost' });
+        toast.success("Lead marcado como perdido");
+        onOpenChange(false);
+      } catch (error) {
+        console.error('Erro ao atualizar status do lead:', error);
+        toast.error("Falha ao atualizar o lead");
       }
-    ];
-    
-    if (lead.status_changed_at && lead.status_changed_at !== lead.created_at) {
-      initialHistory.push({
-        id: '2',
-        timestamp: lead.status_changed_at,
-        text: `Status alterado para ${LEAD_STATUS_LABELS[lead.status] || lead.status}`,
-        type: 'status'
-      });
-    }
-    
-    return initialHistory;
-  });
-  
-  const handleAddComment = () => {
-    if (!newComment.trim()) return;
-    
-    try {
-      const now = new Date().toISOString();
-      
-      // Atualizar last_interaction_at no lead
-      const updatedLead = {
-        ...lead,
-        last_interaction_at: now,
-        updated_at: now
-      };
-      
-      enhancedLeadsStore.update(lead.id, updatedLead);
-      
-      // Adicionar comentário ao histórico local
-      const newHistoryItem: LeadHistoryItem = {
-        id: Date.now().toString(),
-        timestamp: now,
-        text: newComment,
-        type: 'comment'
-      };
-      
-      setHistory([...history, newHistoryItem]);
-      setNewComment('');
-      
-      // Notificar sobre atualização (opcional, pois o evento já será disparado pelo update)
-      onLeadUpdated?.();
-      
-      toast.success('Comentário adicionado');
-    } catch (error) {
-      console.error('Erro ao adicionar comentário:', error);
-      toast.error('Erro ao adicionar comentário');
     }
   };
-
-  const handleAddInteraction = (type: string) => {
-    try {
-      const now = new Date().toISOString();
-      
-      // Atualizar last_interaction_at no lead
-      const updatedLead = {
-        ...lead,
-        last_interaction_at: now,
-        updated_at: now
-      };
-      
-      enhancedLeadsStore.update(lead.id, updatedLead);
-      
-      // Adicionar interação ao histórico local
-      const newHistoryItem: LeadHistoryItem = {
-        id: Date.now().toString(),
-        timestamp: now,
-        text: `Interação registrada: ${type}`,
-        type: 'interaction'
-      };
-      
-      setHistory([...history, newHistoryItem]);
-      
-      // Notificar sobre atualização (opcional, pois o evento já será disparado pelo update)
-      onLeadUpdated?.();
-      
-      // Publicar evento de interação
-      eventBus.publish('lead:interaction', {
-        leadId: lead.id,
-        type,
-        timestamp: now
-      });
-      
-      toast.success('Interação registrada');
-    } catch (error) {
-      console.error('Erro ao registrar interação:', error);
-      toast.error('Erro ao registrar interação');
-    }
-  };
-
-  // Ordenar histórico por data (mais recente primeiro)
-  const sortedHistory = [...history].sort((a, b) => 
-    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <div className="flex justify-between items-center">
-              <DialogTitle className="text-xl">Detalhes do Lead</DialogTitle>
-              <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
-                Editar Lead
-              </Button>
-            </div>
+            <DialogTitle>Detalhes do Lead</DialogTitle>
           </DialogHeader>
-          
-          <div className="mt-4 space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">{lead.name}</h2>
-              <Badge>{LEAD_STATUS_LABELS[lead.status] || lead.status}</Badge>
+
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <User className="h-4 w-4 text-gray-500" />
+              <span className="font-semibold">Informações Pessoais</span>
             </div>
-            
-            <Card className="overflow-hidden">
-              <CardContent className="p-4 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Telefone</p>
-                    <p>{lead.phone}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-muted-foreground">Email</p>
-                    <p>{lead.email || '-'}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-muted-foreground">Veículo</p>
-                    <p>{lead.vehicle_brand} {lead.vehicle_model} ({lead.vehicle_year})</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-muted-foreground">Serviço de Interesse</p>
-                    <p>{lead.service_interest}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-muted-foreground">Fonte</p>
-                    <p>{lead.source}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-muted-foreground">Valor Potencial</p>
-                    <p>{formatCurrency(lead.potential_value)}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-muted-foreground">Responsável</p>
-                    <p>{lead.assigned_to}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm text-muted-foreground">Data de Criação</p>
-                    <p>{new Date(lead.created_at).toLocaleDateString('pt-BR')}</p>
-                  </div>
-                </div>
-                
-                {lead.notes && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Observações</p>
-                    <p className="whitespace-pre-line">{lead.notes}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            
-            <Tabs defaultValue="history">
-              <TabsList className="w-full">
-                <TabsTrigger value="history" className="flex-1">Histórico</TabsTrigger>
-                <TabsTrigger value="interaction" className="flex-1">Adicionar Interação</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="history" className="mt-4">
-                <div className="space-y-3">
-                  {sortedHistory.map(item => (
-                    <div key={item.id} className="p-3 bg-muted rounded-md">
-                      <div className="flex justify-between text-sm">
-                        <Badge variant={
-                          item.type === 'comment' ? 'outline' : 
-                          item.type === 'interaction' ? 'secondary' : 'default'
-                        }>
-                          {item.type === 'comment' ? 'Comentário' : 
-                           item.type === 'interaction' ? 'Interação' : 'Sistema'}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true, locale: ptBR })}
-                        </span>
-                      </div>
-                      <p className="mt-1">{item.text}</p>
-                    </div>
-                  ))}
-                  
-                  {history.length === 0 && (
-                    <p className="text-center text-muted-foreground p-4">
-                      Sem histórico registrado
-                    </p>
-                  )}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="interaction" className="mt-4">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    <Button onClick={() => handleAddInteraction('Telefonema')}>
-                      Registrar Telefonema
-                    </Button>
-                    <Button onClick={() => handleAddInteraction('WhatsApp')}>
-                      Registrar WhatsApp
-                    </Button>
-                    <Button onClick={() => handleAddInteraction('E-mail')}>
-                      Registrar E-mail
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Textarea 
-                      placeholder="Adicione um comentário..." 
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                    />
-                    <Button onClick={handleAddComment} className="w-full">
-                      Adicionar Comentário
-                    </Button>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <strong>Nome:</strong> {lead.name}
+              </div>
+              <div>
+                <strong>Telefone:</strong> {lead.phone}
+              </div>
+              <div>
+                <strong>Email:</strong> {lead.email || "Não informado"}
+              </div>
+              <div>
+                <strong>Atribuído a:</strong> {lead.assigned_to || "Não atribuído"}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center space-x-2">
+              <Car className="h-4 w-4 text-gray-500" />
+              <span className="font-semibold">Informações do Veículo</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <strong>Marca:</strong> {lead.vehicle_brand || "Não informado"}
+              </div>
+              <div>
+                <strong>Modelo:</strong> {lead.vehicle_model || "Não informado"}
+              </div>
+              <div>
+                <strong>Ano:</strong> {lead.vehicle_year || "Não informado"}
+              </div>
+              <div>
+                <strong>Serviço de Interesse:</strong> {lead.service_interest || "Não informado"}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center space-x-2">
+              <Tag className="h-4 w-4 text-gray-500" />
+              <span className="font-semibold">Detalhes do Lead</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <strong>Fonte:</strong> {lead.source || "Não especificada"}
+              </div>
+              <div>
+                <strong>Valor Potencial:</strong> {formatCurrency(lead.potential_value || 0)}
+              </div>
+              <div>
+                <strong>Status:</strong> {getStatusBadge(lead.status)}
+              </div>
+              <div>
+                <strong>Criado em:</strong> {getFormattedDate(lead.created_at)}
+              </div>
+              <div>
+                <strong>Última atualização:</strong> {getFormattedDate(lead.updated_at)}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center space-x-2">
+              <FileText className="h-4 w-4 text-gray-500" />
+              <span className="font-semibold">Observações</span>
+            </div>
+            <div>
+              {lead.notes || "Nenhuma observação."}
+            </div>
           </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Fechar
+            </Button>
+            <Button onClick={handleEditClick}>
+              Editar Lead
+            </Button>
+            <Button variant="destructive" onClick={handleMarkAsLost}>
+              Marcar como Perdido
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       
       {isEditModalOpen && (
-        <LeadFormModal 
+        <LeadFormModal
+          lead={lead}
           open={isEditModalOpen}
           onOpenChange={setIsEditModalOpen}
-          lead={lead}
+          onLeadUpdated={handleEditComplete}
           isEdit={true}
-          onLeadUpdated={() => {
-            if (onLeadUpdated) onLeadUpdated();
-            onOpenChange(false);
-          }}
         />
       )}
     </>

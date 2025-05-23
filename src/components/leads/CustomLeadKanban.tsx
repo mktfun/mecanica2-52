@@ -5,9 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Plus, Edit2, Trash2, MoreHorizontal, AlertCircle } from "lucide-react";
-import { enhancedLeadsStore } from '@/core/storage/StorageService';
 import { Lead, LeadStatus } from '@/types/lead';
-import { useStorageData } from '@/hooks/useStorageData';
+import { useLeads } from '@/hooks/useLeads';
 import { useKanbanColumns, KanbanColumn } from '@/hooks/useKanbanColumns';
 import KanbanColumnDialog from './KanbanColumnDialog';
 import LeadKanbanCard from './LeadKanbanCard';
@@ -26,7 +25,7 @@ import {
 const CustomLeadKanban = () => {
   // Dados do Kanban
   const { columns, isLoading: isColumnsLoading, addColumn, updateColumn, removeColumn, reorderColumns } = useKanbanColumns();
-  const leads = useStorageData<Lead>(enhancedLeadsStore);
+  const { leads, isLoading: isLeadsLoading, updateLeadStatus } = useLeads();
 
   // Estado do modal
   const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
@@ -168,14 +167,8 @@ const CustomLeadKanban = () => {
       if (!lead) return;
       
       // Atualizar o status do lead
-      const updatedLead = {
-        ...lead,
-        status: destination.droppableId as LeadStatus,
-        status_changed_at: new Date().toISOString()
-      };
-      
       try {
-        enhancedLeadsStore.update(lead.id, updatedLead);
+        updateLeadStatus(lead.id, destination.droppableId);
         
         // Mostrar notificação
         const targetColumn = columns.find(col => col.id === destination.droppableId);
@@ -265,12 +258,14 @@ const CustomLeadKanban = () => {
     }
   };
 
-  if (isColumnsLoading) {
+  const isLoading = isColumnsLoading || isLeadsLoading;
+  
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="flex flex-col items-center gap-2">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p className="text-muted-foreground">Carregando colunas...</p>
+          <p className="text-muted-foreground">Carregando...</p>
         </div>
       </div>
     );

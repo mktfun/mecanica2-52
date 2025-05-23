@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useEventSubscription } from '@/hooks/useEventSubscription';
+import { supabase } from '@/integrations/supabase/client';
 
 import CustomLeadKanban from "@/components/leads/CustomLeadKanban";
 import LeadList from "@/components/leads/LeadList";
@@ -22,7 +23,7 @@ const Leads = () => {
     toast.success("Lead adicionado com sucesso!");
   };
 
-  // Subscrever a eventos específicos de leads
+  // Configura a escuta de eventos do Supabase para leads
   useEventSubscription('mecanicapro_leads:created', (lead) => {
     console.log('Novo lead criado:', lead);
     // Você pode fazer algo aqui, como mostrar uma notificação específica
@@ -31,11 +32,6 @@ const Leads = () => {
   useEventSubscription('mecanicapro_leads:updated', (lead) => {
     console.log('Lead atualizado:', lead);
     // Você pode fazer algo aqui, como atualizar estatísticas
-  });
-
-  useEventSubscription('lead:interaction', (data) => {
-    console.log('Interação com lead:', data);
-    // Você pode fazer algo aqui, como registrar em analytics
   });
 
   return (

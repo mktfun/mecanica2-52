@@ -6,9 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { Lead, LeadStatus } from "@/types/lead";
-import { enhancedLeadsStore } from '@/core/storage/StorageService';
 import { toast } from "sonner";
 import { formatCurrency } from "@/utils/formatters";
+import { useLeads } from '@/hooks/useLeads';
 
 export interface LeadFormModalProps {
   open: boolean;
@@ -45,6 +45,7 @@ export function LeadFormModal({
   isEdit = false
 }: LeadFormModalProps) {
   const [formData, setFormData] = useState<Partial<Lead>>(DEFAULT_LEAD);
+  const { addLead, updateLead } = useLeads();
 
   useEffect(() => {
     if ((initialData || lead) && open) {
@@ -58,7 +59,7 @@ export function LeadFormModal({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
@@ -74,27 +75,17 @@ export function LeadFormModal({
       
       if (isEdit && (initialData?.id || lead?.id)) {
         // Atualizar lead existente
-        enhancedLeadsStore.update(initialData?.id || lead?.id || '', {
-          ...formData,
-          updated_at: new Date().toISOString(),
-        } as Lead);
-        toast.success("Lead atualizado com sucesso!");
+        await updateLead(initialData?.id || lead?.id || '', formData);
         if (onLeadUpdated) onLeadUpdated();
       } else {
         // Adicionar novo lead
-        enhancedLeadsStore.add({
-          ...formData,
-          status_changed_at: new Date().toISOString(),
-          last_interaction_at: new Date().toISOString(),
-        } as Omit<Lead, 'id' | 'created_at'>);
-        toast.success("Lead adicionado com sucesso!");
+        await addLead(formData as Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'status_changed_at' | 'last_interaction_at'>);
         if (onLeadAdded) onLeadAdded();
       }
       
       onOpenChange(false);
     } catch (error) {
       console.error('Erro ao salvar lead:', error);
-      toast.error("Erro ao salvar o lead");
     }
   };
 

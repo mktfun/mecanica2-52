@@ -14,10 +14,9 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Button } from "@/components/ui/button";
 import { Search, Filter } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
-import { enhancedLeadsStore } from "@/core/storage/StorageService";
 import { Lead, LeadStatus } from "@/types/lead";
 import LeadDetailModal from './LeadDetailModal';
-import { useStorageData } from '@/hooks/useStorageData';
+import { useLeads } from '@/hooks/useLeads';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -31,16 +30,14 @@ const LEAD_STATUS_MAP: Record<LeadStatus, { label: string, variant: "default" | 
 };
 
 const LeadList = () => {
-  // Usar hook de dados com atualização automática
-  const leads = useStorageData<Lead>(enhancedLeadsStore);
+  const { leads, isLoading } = useLeads();
   
-  const [isLoading, setIsLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortBy, setSortBy] = useState<string>('created_at');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [sortBy, setSortBy] = useState<keyof Lead>('created_at');
+  const [sortDir, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
@@ -105,10 +102,10 @@ const LeadList = () => {
 
   const handleSort = (field: string) => {
     if (sortBy === field) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+      setSortDirection(sortDir === 'asc' ? 'desc' : 'asc');
     } else {
-      setSortBy(field);
-      setSortDir('asc');
+      setSortBy(field as keyof Lead);
+      setSortDirection('asc');
     }
   };
 
@@ -205,7 +202,7 @@ const LeadList = () => {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
+            onClick={() => setSortDirection(sortDir === 'asc' ? 'desc' : 'asc')}
           >
             {sortDir === 'asc' ? '↑' : '↓'}
           </Button>
