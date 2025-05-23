@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { OrderStatusBadge } from '@/components/orders/OrderStatusBadge';
-import { OrdersFilter } from '@/components/orders/OrdersFilter';
+import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
+import OrdersFilter from '@/components/orders/OrdersFilter';
 import { useOrders } from '@/hooks/useOrders';
 import { Order, OrderStatus } from '@/types/order';
 

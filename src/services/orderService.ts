@@ -1,137 +1,136 @@
 
-import { StorageService } from '@/core/storage/StorageService';
+import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderStatus } from '@/types/order';
-import { eventBus, EVENTS } from '@/core/events/EventBus';
 
-// Create a storage service instance for orders
-class OrderStorageService extends StorageService<Order> {
-  constructor() {
-    super('orders');
+class OrderService {
+  async getOrders(organizationId: string): Promise<Order[]> {
+    const { data, error } = await supabase
+      .from('service_orders')
+      .select(`
+        *,
+        client:client_id(*),
+        vehicle:vehicle_id(*),
+        appointment:appointment_id(*),
+        lead:lead_id(*)
+      `)
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Error fetching orders: ${error.message}`);
+    }
+
+    return (data || []).map(order => ({
+      ...order,
+      status: order.status as OrderStatus,
+      description: order.description || '',
+      notes: order.notes || '',
+      technician: order.technician || '',
+      recommendations: order.recommendations || '',
+      labor_cost: order.labor_cost || 0,
+      subtotal: order.subtotal || 0,
+      discount_percent: order.discount_percent || 0,
+      discount_amount: order.discount_amount || 0,
+      tax_percent: order.tax_percent || 0,
+      tax_amount: order.tax_amount || 0,
+      total: order.total || 0,
+      appointment_id: order.appointment_id || undefined,
+      lead_id: order.lead_id || undefined,
+      client: order.client,
+      vehicle: order.vehicle,
+      appointment: order.appointment,
+      lead: order.lead
+    }));
   }
 
-  // Get next order number
-  getNextOrderNumber(): number {
-    const orders = this.getAll();
-    
-    if (orders.length === 0) {
-      return 1000; // Start with 1000 as the first order number
-    }
-    
-    // Find the highest order number and increment by 1
-    const highestNumber = Math.max(...orders.map(order => order.number));
-    return highestNumber + 1;
-  }
-
-  // Update order status with history tracking
-  updateStatus(id: string, status: OrderStatus, notes?: string): Order | null {
-    const order = this.getById(id);
-    
-    if (!order) {
-      return null;
-    }
-    
-    const statusEntry = {
+  async updateOrderStatus(id: string, status: OrderStatus): Promise<Order> {
+    const updates: Partial<Order> = {
       status,
-      timestamp: new Date().toISOString(),
-      notes
+      updated_at: new Date().toISOString()
     };
-    
-    const statusHistory = order.statusHistory || [];
-    
-    const updatedOrder = this.update(id, {
-      status,
-      statusHistory: [...statusHistory, statusEntry],
-      ...(status === 'completed' ? { completedAt: new Date().toISOString() } : {})
-    });
 
-    // Publish event using the correct constant
-    eventBus.publish(ORDER_EVENTS.STATUS_CHANGED, {
-      orderId: id,
-      oldStatus: order.status,
-      newStatus: status
-    });
-    
-    return updatedOrder;
-  }
+    if (status === 'completed') {
+      updates.completed_at = new Date().toISOString();
+    }
 
-  // Calculate order totals
-  calculateOrderTotals(order: Partial<Order>): {
-    subtotal: number;
-    discountAmount: number;
-    taxAmount: number;
-    total: number;
-  } {
-    // Calculate services total
-    const servicesTotal = (order.services || []).reduce(
-      (sum, service) => sum + (service.price * service.quantity),
-      0
-    );
-    
-    // Calculate parts total
-    const partsTotal = (order.parts || []).reduce(
-      (sum, part) => sum + (part.price * part.quantity),
-      0
-    );
-    
-    // Calculate subtotal (services + parts + labor)
-    const laborCost = order.laborCost || 0;
-    const subtotal = servicesTotal + partsTotal + laborCost;
-    
-    // Calculate discount amount
-    const discountPercent = order.discount || 0;
-    const discountAmount = (subtotal * discountPercent) / 100;
-    
-    // Calculate tax amount
-    const taxPercent = order.tax || 0;
-    const taxAmount = ((subtotal - discountAmount) * taxPercent) / 100;
-    
-    // Calculate total
-    const total = subtotal - discountAmount + taxAmount;
-    
+    const { data, error } = await supabase
+      .from('service_orders')
+      .update(updates)
+      .eq('id', id)
+      .select(`
+        *,
+        client:client_id(*),
+        vehicle:vehicle_id(*),
+        appointment:appointment_id(*),
+        lead:lead_id(*)
+      `)
+      .single();
+
+    if (error) {
+      throw new Error(`Error updating order status: ${error.message}`);
+    }
+
     return {
-      subtotal,
-      discountAmount,
-      taxAmount,
-      total
+      ...data,
+      status: data.status as OrderStatus,
+      description: data.description || '',
+      notes: data.notes || '',
+      technician: data.technician || '',
+      recommendations: data.recommendations || '',
+      labor_cost: data.labor_cost || 0,
+      subtotal: data.subtotal || 0,
+      discount_percent: data.discount_percent || 0,
+      discount_amount: data.discount_amount || 0,
+      tax_percent: data.tax_percent || 0,
+      tax_amount: data.tax_amount || 0,
+      total: data.total || 0,
+      appointment_id: data.appointment_id || undefined,
+      lead_id: data.lead_id || undefined,
+      client: data.client,
+      vehicle: data.vehicle,
+      appointment: data.appointment,
+      lead: data.lead
     };
+  }
+
+  async calculateOrderTotal(orderId: string, laborCost: number, discountPercent: number = 0, taxPercent: number = 0): Promise<void> {
+    // Get order parts and services
+    const [partsResult, servicesResult] = await Promise.all([
+      supabase.from('service_order_parts').select('price, quantity').eq('service_order_id', orderId),
+      supabase.from('service_order_services').select('price, quantity').eq('service_order_id', orderId)
+    ]);
+
+    if (partsResult.error || servicesResult.error) {
+      throw new Error('Error calculating order total');
+    }
+
+    const partsTotal = (partsResult.data || []).reduce((sum, part) => sum + (part.price * part.quantity), 0);
+    const servicesTotal = (servicesResult.data || []).reduce((sum, service) => sum + (service.price * service.quantity), 0);
+    
+    const subtotal = partsTotal + servicesTotal + laborCost;
+    const discountAmount = subtotal * (discountPercent / 100);
+    const taxableAmount = subtotal - discountAmount;
+    const taxAmount = taxableAmount * (taxPercent / 100);
+    const total = taxableAmount + taxAmount;
+
+    const { error } = await supabase
+      .from('service_orders')
+      .update({
+        labor_cost: laborCost,
+        subtotal,
+        discount_percent: discountPercent,
+        discount_amount: discountAmount,
+        tax_percent: taxPercent,
+        tax_amount: taxAmount,
+        total,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', orderId);
+
+    if (error) {
+      throw new Error(`Error updating order totals: ${error.message}`);
+    }
   }
 }
 
-export const orderService = new OrderStorageService();
-
-// Add order-related event types
-declare module '@/core/events/EventBus' {
-  interface EventTypes {
-    STATUS_CHANGED: {
-      orderId: string;
-      oldStatus: OrderStatus;
-      newStatus: OrderStatus;
-    };
-    ORDER_CREATED: {
-      orderId: string;
-      order: Order;
-    };
-    ORDER_UPDATED: {
-      orderId: string;
-      order: Order;
-    };
-    ORDER_DELETED: {
-      orderId: string;
-    };
-  }
-}
-
-// Add order-related events
-export const ORDER_EVENTS = {
-  STATUS_CHANGED: 'STATUS_CHANGED',
-  CREATED: 'ORDER_CREATED',
-  UPDATED: 'ORDER_UPDATED',
-  DELETED: 'ORDER_DELETED'
-};
-
-// Register events
-Object.values(ORDER_EVENTS).forEach(event => {
-  if (!EVENTS[event]) {
-    EVENTS[event] = event;
-  }
-});
+export const orderService = new OrderService();

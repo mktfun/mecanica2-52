@@ -22,25 +22,26 @@ const LEAD_STATUSES = [
 ];
 
 const CustomLeadKanban: React.FC<CustomLeadKanbanProps> = ({ 
-  leads = [], // Default to empty array to prevent undefined
+  leads = [], 
   onUpdateLead, 
   onLeadClick 
 }) => {
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
 
-  // Organizar leads por status with null safety
+  // Organizar leads por status with comprehensive null safety
   const columns = LEAD_STATUSES.reduce((acc, status) => {
+    const safeLeads = Array.isArray(leads) ? leads : [];
     acc[status.id] = {
       id: status.id,
       title: status.title,
-      items: Array.isArray(leads) ? leads.filter(lead => lead.status === status.id) : []
+      items: safeLeads.filter(lead => lead && lead.status === status.id)
     };
     return acc;
   }, {} as Record<LeadStatus, { id: LeadStatus; title: string; items: Lead[] }>);
 
   const handleDragStart = (result: any) => {
-    if (!leads || !Array.isArray(leads)) return;
-    const lead = leads.find(l => l.id === result.draggableId);
+    const safeLeads = Array.isArray(leads) ? leads : [];
+    const lead = safeLeads.find(l => l && l.id === result.draggableId);
     setDraggedLead(lead || null);
   };
 
@@ -58,9 +59,8 @@ const CustomLeadKanban: React.FC<CustomLeadKanbanProps> = ({
       return;
     }
     
-    if (!leads || !Array.isArray(leads)) return;
-    
-    const lead = leads.find(l => l.id === draggableId);
+    const safeLeads = Array.isArray(leads) ? leads : [];
+    const lead = safeLeads.find(l => l && l.id === draggableId);
     if (!lead) return;
     
     if (source.droppableId !== destination.droppableId) {
@@ -73,11 +73,13 @@ const CustomLeadKanban: React.FC<CustomLeadKanbanProps> = ({
         last_interaction_at: new Date().toISOString()
       });
       
-      toast.success(`Lead movido para ${destColumn?.title}`);
+      toast.success(`Lead movido para ${destColumn?.title || 'nova coluna'}`);
     }
   };
 
   const getUrgencyClass = (lead: Lead) => {
+    if (!lead) return 'border-l-4 border-l-gray-300';
+    
     const lastInteraction = new Date(lead.last_interaction_at || lead.created_at);
     const daysSinceInteraction = Math.floor((new Date().getTime() - lastInteraction.getTime()) / (1000 * 60 * 60 * 24));
     
@@ -86,8 +88,8 @@ const CustomLeadKanban: React.FC<CustomLeadKanbanProps> = ({
     return 'border-l-4 border-l-green-500';
   };
 
-  // Show loading or empty state if leads is not properly loaded
-  if (!leads || !Array.isArray(leads)) {
+  // Show loading state if leads is not properly loaded
+  if (!Array.isArray(leads)) {
     return (
       <div className="w-full overflow-x-auto pb-6">
         <div className="flex gap-6 min-h-[calc(100vh-250px)]">
@@ -118,7 +120,7 @@ const CustomLeadKanban: React.FC<CustomLeadKanbanProps> = ({
               <div className="bg-muted rounded-t-lg p-3 flex justify-between items-center border-b-2 border-border">
                 <h3 className="font-semibold text-sm">{status.title}</h3>
                 <Badge variant="secondary" className="rounded-full">
-                  {columns[status.id]?.items.length || 0}
+                  {columns[status.id]?.items?.length || 0}
                 </Badge>
               </div>
               
@@ -129,7 +131,7 @@ const CustomLeadKanban: React.FC<CustomLeadKanbanProps> = ({
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                   >
-                    {columns[status.id]?.items.map((lead, index) => (
+                    {(columns[status.id]?.items || []).map((lead, index) => (
                       <Draggable
                         key={lead.id}
                         draggableId={lead.id}
@@ -146,18 +148,18 @@ const CustomLeadKanban: React.FC<CustomLeadKanbanProps> = ({
                             onClick={() => onLeadClick(lead)}
                           >
                             <div className="flex justify-between items-start mb-2">
-                              <h4 className="font-medium text-sm truncate max-w-[70%]">{lead.name}</h4>
+                              <h4 className="font-medium text-sm truncate max-w-[70%]">{lead.name || 'Nome não informado'}</h4>
                               <Badge variant="outline" className="text-xs">
                                 {lead.source || 'Não informado'}
                               </Badge>
                             </div>
                             
                             <div className="text-xs space-y-1 mb-2">
-                              <div>{lead.phone}</div>
+                              <div>{lead.phone || 'Telefone não informado'}</div>
                               <div className="truncate">{lead.service_interest || 'Serviço não especificado'}</div>
                               <div className="text-muted-foreground">
                                 {lead.vehicle ? 
-                                  `${lead.vehicle.make} ${lead.vehicle.model} (${lead.vehicle.year || ''})` : 
+                                  `${lead.vehicle.make || ''} ${lead.vehicle.model || ''} (${lead.vehicle.year || ''})` : 
                                   'Veículo não especificado'}
                               </div>
                             </div>
@@ -176,7 +178,7 @@ const CustomLeadKanban: React.FC<CustomLeadKanbanProps> = ({
                     ))}
                     {provided.placeholder}
                     
-                    {columns[status.id]?.items.length === 0 && (
+                    {(columns[status.id]?.items?.length || 0) === 0 && (
                       <div className="text-center p-4 text-sm text-muted-foreground">
                         Sem leads neste estágio
                       </div>

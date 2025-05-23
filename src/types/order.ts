@@ -1,28 +1,20 @@
 
-import { BaseEntity } from "@/core/storage/StorageService";
-import { Lead } from "./lead";
+export type OrderStatus = 'open' | 'in_progress' | 'awaiting_parts' | 'completed' | 'cancelled' | 'delivered';
 
-// Customer type
-export interface Customer extends BaseEntity {
+interface BaseEntity {
   id: string;
-  organization_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Customer extends BaseEntity {
   name: string;
   email?: string;
   phone?: string;
   address?: string;
-  city?: string;
-  state?: string;
-  postal_code?: string;
-  notes?: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
-// Vehicle type
-export interface Vehicle extends BaseEntity {
-  id: string;
-  organization_id?: string;
-  client_id: string;
+interface Vehicle extends BaseEntity {
   make: string;
   model: string;
   year?: string;
@@ -30,27 +22,16 @@ export interface Vehicle extends BaseEntity {
   color?: string;
   vin?: string;
   mileage?: number;
-  notes?: string;
-  created_at?: string;
-  updated_at?: string;
 }
 
-// ServiceType type
-export interface ServiceType extends BaseEntity {
-  id: string;
-  organization_id?: string;
+interface ServiceType extends BaseEntity {
   name: string;
   description?: string;
   price: number;
   estimated_time?: number;
-  category?: string;
-  active?: boolean;
-  created_at?: string;
-  updated_at?: string;
 }
 
-// OrderService type (service in an order)
-export interface OrderService {
+interface OrderService {
   id: string;
   service_order_id: string;
   service_id?: string;
@@ -62,24 +43,17 @@ export interface OrderService {
   created_at: string;
 }
 
-// Part type
-export interface Part extends BaseEntity {
-  id: string;
-  organization_id?: string;
+interface Part extends BaseEntity {
   name: string;
   code?: string;
-  description?: string;
   price: number;
-  category?: string;
-  stock?: number;
+  stock: number;
   minimum_stock?: number;
-  active?: boolean;
-  created_at?: string;
-  updated_at?: string;
+  category?: string;
+  description?: string;
 }
 
-// OrderPart type (part in an order)
-export interface OrderPart {
+interface OrderPart {
   id: string;
   service_order_id: string;
   part_id?: string;
@@ -90,8 +64,7 @@ export interface OrderPart {
   created_at: string;
 }
 
-// Photo type for order
-export interface OrderPhoto {
+interface OrderPhoto {
   id: string;
   service_order_id: string;
   url: string;
@@ -99,43 +72,48 @@ export interface OrderPhoto {
   created_at: string;
 }
 
-// Order status type
-export type OrderStatus = 'open' | 'in_progress' | 'waiting_parts' | 'waiting_approval' | 'completed' | 'cancelled';
-
-// Main Order interface
-export interface Order extends BaseEntity {
+export interface Order {
   id: string;
   number: number;
-  organization_id: string;
   client_id: string;
   vehicle_id: string;
-  appointment_id?: string;
-  lead_id?: string;
+  organization_id: string;
   status: OrderStatus;
   description?: string;
-  technician?: string;
-  labor_cost: number;
-  discount_percent: number;
-  tax_percent: number;
-  subtotal: number;
-  discount_amount: number;
-  tax_amount: number;
-  total: number;
   notes?: string;
+  technician?: string;
   recommendations?: string;
+  labor_cost?: number;
+  subtotal?: number;
+  discount_percent?: number;
+  discount_amount?: number;
+  tax_percent?: number;
+  tax_amount?: number;
+  total?: number;
   estimated_completion_date?: string;
   completed_at?: string;
   created_at: string;
   updated_at: string;
+  appointment_id?: string;
+  lead_id?: string;
   
-  // Relacionamentos expandidos
-  client?: Customer;
-  vehicle?: Vehicle;
+  // Expanded relationships
+  client?: {
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+  };
+  vehicle?: {
+    id: string;
+    make: string;
+    model: string;
+    year?: string;
+    plate: string;
+    color?: string;
+  };
   appointment?: any;
-  lead?: Lead;
-  
-  // Arrays de serviços, peças e fotos
-  services: OrderService[];
-  parts: OrderPart[];
-  photos: OrderPhoto[];
+  lead?: any;
 }
+
+export type { Customer, Vehicle, ServiceType, OrderService, Part, OrderPart, OrderPhoto };
