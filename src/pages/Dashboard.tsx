@@ -36,11 +36,9 @@ const Dashboard = () => {
     financialData: []
   });
   
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-  
-  const loadDashboardData = () => {
+  // Função para carregar dados do localStorage
+  const loadDashboardData = React.useCallback(() => {
+    console.log('Carregando dados do dashboard...');
     try {
       setIsLoading(true);
       
@@ -49,6 +47,13 @@ const Dashboard = () => {
       const appointmentsData = appointmentsStore.getAll();
       const ordersData = ordersStore.getAll();
       const financialData = financialStore.getAll();
+      
+      console.log('Dados carregados:', {
+        leads: leadsData.length,
+        appointments: appointmentsData.length, 
+        orders: ordersData.length,
+        financial: financialData.length
+      });
       
       // Obtém ranges de data para filtros
       const { 
@@ -70,7 +75,7 @@ const Dashboard = () => {
       );
       
       // Atualiza estado com dados calculados
-      setDashboardData({
+      const newDashboardData = {
         revenue: {
           daily: dailyRevenue,
           weekly: weeklyRevenue,
@@ -81,7 +86,10 @@ const Dashboard = () => {
         appointments: appointmentsData,
         orders: ordersData,
         financialData
-      });
+      };
+      
+      console.log('Dashboard data atualizada:', newDashboardData);
+      setDashboardData(newDashboardData);
       
       toast.success('Dados do dashboard atualizados');
     } catch (error) {
@@ -90,7 +98,12 @@ const Dashboard = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+  
+  // Carrega dados na montagem do componente
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
   
   // Calcula receita para um período específico
   const calculateRevenue = (data: any[], startDate: Date, endDate = new Date()) => {

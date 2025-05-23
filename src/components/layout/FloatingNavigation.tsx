@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from "framer-motion";
 import { Home, Users, Calendar, Clipboard, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const tabs = [
   { title: 'Dashboard', icon: Home, path: '/dashboard' },
@@ -35,6 +36,7 @@ const FloatingNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [selected, setSelected] = useState<number | null>(null);
+  const isMobile = useIsMobile();
   
   // Encontrar índice inicial baseado na rota atual
   useEffect(() => {
@@ -48,12 +50,17 @@ const FloatingNavigation = () => {
     navigate(path);
   };
 
+  // Só renderiza se for mobile
+  if (!isMobile) {
+    return null;
+  }
+
   return (
     <motion.div 
       className={cn(
-        "fixed bottom-6 left-0 right-0 z-50", // Changed from bottom-0 to bottom-6
+        "fixed bottom-6 left-0 right-0 z-50",
         "flex items-center justify-center",
-        "bg-transparent", // Changed from bg-white to bg-transparent
+        "bg-transparent",
         "px-4 py-2"
       )}
       initial={{ y: 100 }}

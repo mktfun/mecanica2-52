@@ -48,7 +48,9 @@ const Layout = () => {
       </div>
       
       {/* Navegação flutuante - apenas mobile */}
-      <FloatingNavigation />
+      <div className="lg:hidden">
+        <FloatingNavigation />
+      </div>
     </div>
   );
 };
