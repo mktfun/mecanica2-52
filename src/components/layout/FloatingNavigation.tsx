@@ -51,9 +51,9 @@ const FloatingNavigation = () => {
   return (
     <motion.div 
       className={cn(
-        "fixed bottom-0 left-0 right-0 z-50",
+        "fixed bottom-6 left-0 right-0 z-50", // Changed from bottom-0 to bottom-6
         "flex items-center justify-center",
-        "bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800",
+        "bg-transparent", // Changed from bg-white to bg-transparent
         "px-4 py-2"
       )}
       initial={{ y: 100 }}
