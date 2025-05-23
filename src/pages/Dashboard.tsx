@@ -117,13 +117,13 @@ const Dashboard = () => {
 
   const bentoCards = [
     {
-      Icon: Calendar,
-      name: 'Próximos Agendamentos',
-      description: 'Veja os próximos compromissos agendados',
-      cta: 'Ver Agenda Completa',
-      background: <UpcomingAppointmentsCard data={dashboardData.appointments} />,
+      Icon: BarChart,
+      name: 'Faturamento',
+      description: 'Acompanhe o desempenho financeiro mensal',
+      cta: 'Ver Relatórios Detalhados',
+      background: <RevenueChartCard data={dashboardData.financialData} />,
       className: 'md:col-span-2 lg:row-span-2',
-      onCtaClick: () => navigate('/appointments')
+      onCtaClick: () => navigate('/reports')
     },
     {
       Icon: Clipboard,
@@ -153,13 +153,13 @@ const Dashboard = () => {
       onCtaClick: () => navigate('/orders/new')
     },
     {
-      Icon: BarChart,
-      name: 'Faturamento',
-      description: 'Acompanhe o desempenho financeiro mensal',
-      cta: 'Ver Relatórios Detalhados',
-      background: <RevenueChartCard data={dashboardData.financialData} />,
+      Icon: Calendar,
+      name: 'Próximos Agendamentos',
+      description: 'Veja os próximos compromissos agendados',
+      cta: 'Ver Agenda Completa',
+      background: <UpcomingAppointmentsCard data={dashboardData.appointments} />,
       className: 'md:col-span-2',
-      onCtaClick: () => navigate('/reports')
+      onCtaClick: () => navigate('/appointments')
     }
   ];
   
