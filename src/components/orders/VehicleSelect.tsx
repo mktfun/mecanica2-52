@@ -10,6 +10,7 @@ import {
 import { Vehicle } from '@/types/order';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
+import AddVehicleModal from './AddVehicleModal';
 
 interface VehicleSelectProps {
   selectedVehicle: Vehicle | null;
@@ -17,35 +18,28 @@ interface VehicleSelectProps {
   onSelect: (vehicle: Vehicle) => void;
 }
 
-// Mock function to get vehicles - this would be replaced with a real data fetch
-const getVehicles = (customerId?: string): Vehicle[] => {
-  try {
-    // In a real application, you'd get this from your vehicle service
-    const vehiclesJSON = localStorage.getItem('mecanicapro_vehicles');
-    if (vehiclesJSON) {
-      const vehicles = JSON.parse(vehiclesJSON);
-      
-      // If customerId is provided, filter vehicles by customer
-      if (customerId) {
-        return vehicles.filter((vehicle: Vehicle) => vehicle.customerId === customerId);
-      }
-      
-      return vehicles;
-    }
-    return [];
-  } catch (error) {
-    console.error("Error fetching vehicles:", error);
-    return [];
-  }
-};
-
 const VehicleSelect = ({ selectedVehicle, customerId, onSelect }: VehicleSelectProps) => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchVehicles = () => {
-      const fetchedVehicles = getVehicles(customerId);
-      setVehicles(fetchedVehicles);
+      try {
+        const vehiclesJSON = localStorage.getItem('mecanicapro_vehicles');
+        if (vehiclesJSON) {
+          const allVehicles = JSON.parse(vehiclesJSON);
+          
+          // If customerId is provided, filter vehicles by customer
+          if (customerId) {
+            const filteredVehicles = allVehicles.filter((vehicle: Vehicle) => vehicle.customerId === customerId);
+            setVehicles(filteredVehicles);
+          } else {
+            setVehicles(allVehicles);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching vehicles:", error);
+      }
     };
 
     fetchVehicles();
@@ -58,10 +52,13 @@ const VehicleSelect = ({ selectedVehicle, customerId, onSelect }: VehicleSelectP
     }
   };
 
-  // Function to open vehicle creation modal - this would be implemented in a real app
-  const handleAddVehicle = () => {
-    // In a real implementation, this would open a modal to create a vehicle
-    alert('Esta funcionalidade seria implementada com um modal para cadastrar veículos');
+  const handleVehicleAdded = (newVehicle: Vehicle) => {
+    // Only add to the list if it belongs to the current customer
+    if (!customerId || newVehicle.customerId === customerId) {
+      setVehicles(prev => [...prev, newVehicle]);
+      onSelect(newVehicle);
+    }
+    setIsAddModalOpen(false);
   };
 
   return (
@@ -96,7 +93,7 @@ const VehicleSelect = ({ selectedVehicle, customerId, onSelect }: VehicleSelectP
         <Button 
           type="button"
           variant="outline"
-          onClick={handleAddVehicle}
+          onClick={() => setIsAddModalOpen(true)}
           disabled={!customerId}
           className="shrink-0"
         >
@@ -112,6 +109,13 @@ const VehicleSelect = ({ selectedVehicle, customerId, onSelect }: VehicleSelectP
           {selectedVehicle.color && <div><span className="font-medium">Cor:</span> {selectedVehicle.color}</div>}
         </div>
       )}
+
+      <AddVehicleModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onVehicleAdded={handleVehicleAdded}
+        preSelectedCustomerId={customerId}
+      />
     </div>
   );
 };

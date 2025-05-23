@@ -10,35 +10,27 @@ import {
 import { Customer } from '@/types/order';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
+import AddCustomerModal from './AddCustomerModal';
 
 interface CustomerSelectProps {
   selectedCustomer: Customer | null;
   onSelect: (customer: Customer) => void;
 }
 
-// Mock function to get customers - this would be replaced with a real data fetch
-const getCustomers = (): Customer[] => {
-  try {
-    // In a real application, you'd get this from your customer service
-    const customersJSON = localStorage.getItem('mecanicapro_customers');
-    if (customersJSON) {
-      return JSON.parse(customersJSON);
-    }
-    return [];
-  } catch (error) {
-    console.error("Error fetching customers:", error);
-    return [];
-  }
-};
-
 const CustomerSelect = ({ selectedCustomer, onSelect }: CustomerSelectProps) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchCustomers = () => {
-      const fetchedCustomers = getCustomers();
-      setCustomers(fetchedCustomers);
+      try {
+        const customersJSON = localStorage.getItem('mecanicapro_customers');
+        if (customersJSON) {
+          setCustomers(JSON.parse(customersJSON));
+        }
+      } catch (error) {
+        console.error("Error fetching customers:", error);
+      }
     };
 
     fetchCustomers();
@@ -51,10 +43,10 @@ const CustomerSelect = ({ selectedCustomer, onSelect }: CustomerSelectProps) => 
     }
   };
 
-  // Function to open customer creation modal - this would be implemented in a real app
-  const handleAddCustomer = () => {
-    // In a real implementation, this would open a modal to create a customer
-    alert('Esta funcionalidade seria implementada com um modal para criar clientes');
+  const handleCustomerAdded = (newCustomer: Customer) => {
+    setCustomers(prev => [...prev, newCustomer]);
+    onSelect(newCustomer);
+    setIsAddModalOpen(false);
   };
 
   return (
@@ -63,7 +55,6 @@ const CustomerSelect = ({ selectedCustomer, onSelect }: CustomerSelectProps) => 
         <Select 
           value={selectedCustomer?.id} 
           onValueChange={handleSelect}
-          onOpenChange={setIsOpen}
         >
           <SelectTrigger className="w-full">
             <SelectValue 
@@ -87,7 +78,7 @@ const CustomerSelect = ({ selectedCustomer, onSelect }: CustomerSelectProps) => 
         <Button 
           type="button"
           variant="outline"
-          onClick={handleAddCustomer}
+          onClick={() => setIsAddModalOpen(true)}
           className="shrink-0"
         >
           <PlusCircle className="h-4 w-4" />
@@ -100,6 +91,12 @@ const CustomerSelect = ({ selectedCustomer, onSelect }: CustomerSelectProps) => 
           {selectedCustomer.email && <div>{selectedCustomer.email}</div>}
         </div>
       )}
+
+      <AddCustomerModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onCustomerAdded={handleCustomerAdded}
+      />
     </div>
   );
 };
