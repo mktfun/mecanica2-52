@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MarketingOverview } from './MarketingOverview';
-import { SpendChart } from './charts/SpendChart';
-import { LeadSourceChart } from './charts/LeadSourceChart';
+import { BentoGrid, BentoCard } from '@/components/ui/bento-grid';
+import { DollarSign, Users, Target, TrendingUp, BarChart3, PieChart } from 'lucide-react';
+import { KpiCardContent } from './KpiCardContent';
+import { ImprovedSpendChart } from './charts/ImprovedSpendChart';
+import { ImprovedLeadSourceChart } from './charts/ImprovedLeadSourceChart';
 import { PerformanceMetrics } from './PerformanceMetrics';
 
 // Dados mockados
@@ -68,6 +69,94 @@ const mockData = {
 export const MarketingDashboard = () => {
   const [dateRange, setDateRange] = useState('last_30_days');
 
+  const features = [
+    {
+      Icon: DollarSign,
+      name: 'Investimento Total',
+      description: `R$ ${mockData.overview.totalSpend.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      background: (
+        <KpiCardContent 
+          value={`R$ ${mockData.overview.totalSpend.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+          change={5.2}
+          isPositive={false}
+        />
+      ),
+      className: 'lg:col-span-1 lg:row-span-1',
+      cta: 'Ver Detalhes',
+      href: '#'
+    },
+    {
+      Icon: Users,
+      name: 'Leads Gerados',
+      description: `${mockData.overview.totalLeads} leads`,
+      background: (
+        <KpiCardContent 
+          value={mockData.overview.totalLeads.toString()}
+          change={12.5}
+          isPositive={true}
+        />
+      ),
+      className: 'lg:col-span-1 lg:row-span-1',
+      cta: 'Ver Leads',
+      href: '#'
+    },
+    {
+      Icon: Target,
+      name: 'Custo por Lead (CPL)',
+      description: `R$ ${mockData.overview.averageCPL.toFixed(2)}`,
+      background: (
+        <KpiCardContent 
+          value={`R$ ${mockData.overview.averageCPL.toFixed(2)}`}
+          change={3.1}
+          isPositive={false}
+        />
+      ),
+      className: 'lg:col-span-1 lg:row-span-1',
+      cta: 'Analisar',
+      href: '#'
+    },
+    {
+      Icon: TrendingUp,
+      name: 'ROI Estimado',
+      description: `${mockData.overview.estimatedROI}%`,
+      background: (
+        <KpiCardContent 
+          value={`${mockData.overview.estimatedROI}%`}
+          change={8.7}
+          isPositive={true}
+        />
+      ),
+      className: 'lg:col-span-1 lg:row-span-1',
+      cta: 'Ver ROI',
+      href: '#'
+    },
+    {
+      Icon: BarChart3,
+      name: 'Gastos por Plataforma',
+      description: 'Investimento diário Google Ads vs Meta Ads',
+      background: (
+        <ImprovedSpendChart 
+          googleData={mockData.googleAds.dailySpend} 
+          metaData={mockData.metaAds.dailySpend} 
+        />
+      ),
+      className: 'lg:col-span-2 lg:row-span-2',
+      cta: 'Ver Relatório',
+      href: '#'
+    },
+    {
+      Icon: PieChart,
+      name: 'Origem dos Leads',
+      description: 'Distribuição das fontes de leads',
+      background: (
+        <ImprovedLeadSourceChart leads={mockData.leads} />
+      ),
+      className: 'lg:col-span-1 lg:row-span-2',
+      cta: 'Analisar Fontes',
+      href: '#'
+    }
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
@@ -86,30 +175,11 @@ export const MarketingDashboard = () => {
         </Select>
       </div>
 
-      <MarketingOverview data={mockData.overview} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Gastos por Plataforma</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SpendChart 
-              googleData={mockData.googleAds.dailySpend} 
-              metaData={mockData.metaAds.dailySpend} 
-            />
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Origem dos Leads</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LeadSourceChart leads={mockData.leads} />
-          </CardContent>
-        </Card>
-      </div>
+      <BentoGrid className="lg:grid-cols-3 lg:grid-rows-3 auto-rows-[12rem]">
+        {features.map((feature) => (
+          <BentoCard key={feature.name} {...feature} />
+        ))}
+      </BentoGrid>
 
       <PerformanceMetrics 
         googleData={mockData.googleAds} 
