@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Menu, Bell, Search } from 'lucide-react';
+import { Bell, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import authService from '@/services/authService';
@@ -16,16 +16,7 @@ const Header: React.FC<HeaderProps> = ({ setMobileMenuOpen }) => {
     <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
       <div className="px-4 flex h-16 items-center justify-between">
         <div className="flex items-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="mr-2 md:hidden"
-            onClick={() => setMobileMenuOpen(true)}
-          >
-            <Menu className="h-6 w-6" />
-            <span className="sr-only">Menu</span>
-          </Button>
-          <div className="hidden md:flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
               <Input
@@ -45,7 +36,7 @@ const Header: React.FC<HeaderProps> = ({ setMobileMenuOpen }) => {
           </Button>
           
           <div className="flex items-center gap-4">
-            <div className="text-right hidden md:block">
+            <div className="text-right">
               <p className="text-sm font-medium">{currentUser?.name || 'Usuário'}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {currentUser?.role === 'admin' ? 'Administrador' :
@@ -61,17 +52,6 @@ const Header: React.FC<HeaderProps> = ({ setMobileMenuOpen }) => {
               </span>
             </div>
           </div>
-        </div>
-      </div>
-      
-      <div className="px-4 py-2 md:hidden">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
-          <Input
-            type="search"
-            placeholder="Pesquisar..."
-            className="w-full pl-8 rounded-md border border-gray-200 dark:border-gray-800"
-          />
         </div>
       </div>
     </header>

@@ -160,7 +160,7 @@ export const DesktopSidebar = ({
   
   return (
     <motion.div
-      className="h-screen hidden md:flex md:flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex-shrink-0"
+      className="h-screen hidden lg:flex lg:flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex-shrink-0"
       animate={{
         width: animate ? (open ? "280px" : "80px") : "280px",
       }}
@@ -303,130 +303,8 @@ export const MobileSidebar = ({
   setMobileMenuOpen: (isOpen: boolean) => void;
   currentPath: string;
 }) => {
-  const { open, setOpen } = useSidebar();
-  
-  return (
-    <>
-      <div className="h-16 px-4 flex items-center justify-between md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 w-full">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-md bg-blue-600 flex items-center justify-center text-white font-bold">
-            M
-          </div>
-          <h1 className="text-lg font-bold text-blue-800 dark:text-blue-400">MecânicaPro</h1>
-        </div>
-        <div>
-          <Menu
-            className="text-gray-700 dark:text-gray-300 cursor-pointer h-6 w-6"
-            onClick={() => setMobileMenuOpen(true)}
-          />
-        </div>
-      </div>
-      <AnimatePresence>
-        {open && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-40 md:hidden"
-              onClick={() => setMobileMenuOpen(false)}
-            />
-            <motion.div
-              initial={{ x: "-100%", opacity: 0.5 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: "-100%", opacity: 0.5 }}
-              transition={{
-                type: "spring",
-                stiffness: 300,
-                damping: 30
-              }}
-              className="fixed h-full inset-y-0 left-0 w-72 bg-white dark:bg-gray-900 z-50 md:hidden flex flex-col border-r border-gray-200 dark:border-gray-800 shadow-xl"
-            >
-              <div className="p-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-md bg-blue-600 flex items-center justify-center text-white font-bold text-xl">
-                    M
-                  </div>
-                  <h1 className="text-xl font-bold text-blue-800 dark:text-blue-400">MecânicaPro</h1>
-                </div>
-                <button
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-1"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              
-              <ScrollArea className="flex-1 overflow-hidden">
-                <nav className="p-4">
-                  <ul className="space-y-1">
-                    {navItems.map((item) => {
-                      const isActive = currentPath === item.path;
-                      return (
-                        <li key={item.path}>
-                          <NavLink 
-                            to={item.path} 
-                            className={({ isActive }) => 
-                              cn(
-                                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all relative overflow-hidden",
-                                isActive 
-                                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
-                                  : "text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800/50"
-                              )
-                            }
-                            onClick={handleNavClick}
-                          >
-                            <div className={`${isActive ? "text-blue-600 dark:text-blue-400" : ""}`}>
-                              {item.icon}
-                            </div>
-                            <span className="flex-1">{item.name}</span>
-                            {item.notification && (
-                              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-xs font-medium text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
-                                {item.notification}
-                              </span>
-                            )}
-                            {isActive && (
-                              <motion.div 
-                                className="absolute inset-y-0 left-0 w-1 bg-blue-600 dark:bg-blue-500 rounded-r-full" 
-                                layoutId="activeMobileNav"
-                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                              />
-                            )}
-                          </NavLink>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </nav>
-              </ScrollArea>
-              
-              <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <span className="text-blue-800 font-medium">
-                      {currentUser?.name.charAt(0) || 'U'}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{currentUser?.name || 'Usuário'}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">{currentUser?.role || 'Funcionário'}</p>
-                  </div>
-                </div>
-                
-                <button 
-                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-all hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-5 w-5" />
-                  <span>Sair</span>
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </>
-  );
+  // Este componente não é mais usado, mas mantendo para compatibilidade
+  return null;
 };
 
 export default Sidebar;
