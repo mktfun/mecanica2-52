@@ -18,7 +18,7 @@ const OrderStatusBadge = ({ status, className }: OrderStatusBadgeProps) => {
         return { label: 'Em Andamento', variant: 'default' };
       case 'completed':
         return { label: 'Concluída', variant: 'default' };
-      case 'canceled':
+      case 'cancelled':
         return { label: 'Cancelada', variant: 'destructive' };
       case 'waiting_parts':
         return { label: 'Aguardando Peças', variant: 'outline' };

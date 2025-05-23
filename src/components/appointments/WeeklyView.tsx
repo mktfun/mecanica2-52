@@ -163,7 +163,7 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ selectedDate }) => {
                         }}
                       >
                         <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                          {appointment.client_name}
+                          {appointment.client?.name || 'Cliente não especificado'}
                         </div>
                         <div className="text-gray-600 dark:text-gray-400 truncate">
                           {appointment.service_type || 'Serviço'}

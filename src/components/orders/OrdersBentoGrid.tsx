@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BentoGrid, BentoCard } from '@/components/ui/bento-grid';
@@ -49,7 +48,7 @@ const OrdersBentoGrid = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="font-medium text-sm text-blue-600 dark:text-blue-400">#{order.number}</p>
-                  <p className="text-sm text-gray-900 dark:text-gray-100">{order.customer?.name || 'N/A'}</p>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">{order.client?.name || 'N/A'}</p>
                   <p className="text-xs text-gray-600 dark:text-gray-300">{order.vehicle?.model} - {order.vehicle?.plate}</p>
                 </div>
                 <div className="text-right">
@@ -57,14 +56,14 @@ const OrdersBentoGrid = () => {
                     order.status === 'open' ? 'bg-blue-100 text-blue-800' :
                     order.status === 'in_progress' ? 'bg-orange-100 text-orange-800' :
                     order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                    order.status === 'canceled' ? 'bg-red-100 text-red-800' :
+                    order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                     order.status === 'waiting_parts' ? 'bg-purple-100 text-purple-800' :
                     'bg-yellow-100 text-yellow-800'
                   }`}>
                     {order.status === 'open' ? 'Aberta' :
                      order.status === 'in_progress' ? 'Em Andamento' :
                      order.status === 'completed' ? 'Concluída' :
-                     order.status === 'canceled' ? 'Cancelada' :
+                     order.status === 'cancelled' ? 'Cancelada' :
                      order.status === 'waiting_parts' ? 'Aguardando Peças' :
                      'Aguardando Aprovação'}
                   </span>

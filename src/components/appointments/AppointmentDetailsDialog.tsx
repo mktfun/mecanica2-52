@@ -5,7 +5,6 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle,
-  DialogTrigger,
   DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -99,6 +98,13 @@ export default function AppointmentDetailsDialog({
       onClose();
     }
   };
+
+  const clientName = appointment.client?.name || 'Cliente não especificado';
+  const clientPhone = appointment.client?.phone || 'Não informado';
+  const clientEmail = appointment.client?.email || 'Não informado';
+  const vehicleInfo = appointment.vehicle 
+    ? `${appointment.vehicle.make} ${appointment.vehicle.model} ${appointment.vehicle.year ? `(${appointment.vehicle.year})` : ''}`
+    : 'Veículo não especificado';
   
   const renderAppointmentDetails = () => (
     <>
@@ -106,24 +112,24 @@ export default function AppointmentDetailsDialog({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <h3 className="text-sm font-medium text-gray-500">Cliente</h3>
-            <p className="text-base">{appointment.client_name}</p>
+            <p className="text-base">{clientName}</p>
           </div>
           
           <div>
             <h3 className="text-sm font-medium text-gray-500">Telefone</h3>
-            <p className="text-base">{appointment.phone}</p>
+            <p className="text-base">{clientPhone}</p>
           </div>
           
-          {appointment.email && (
+          {appointment.client?.email && (
             <div>
               <h3 className="text-sm font-medium text-gray-500">Email</h3>
-              <p className="text-base">{appointment.email}</p>
+              <p className="text-base">{clientEmail}</p>
             </div>
           )}
           
           <div>
             <h3 className="text-sm font-medium text-gray-500">Veículo</h3>
-            <p className="text-base">{appointment.vehicle_info}</p>
+            <p className="text-base">{vehicleInfo}</p>
           </div>
           
           <div>

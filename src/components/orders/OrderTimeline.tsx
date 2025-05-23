@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Order, StatusHistoryEntry } from '@/types/order';
+import { Order } from '@/types/order';
 import { formatDateTime } from '@/utils/formatters';
 import { 
   Clock, 
@@ -16,17 +16,15 @@ interface OrderTimelineProps {
 }
 
 const OrderTimeline = ({ order }: OrderTimelineProps) => {
-  const statusHistory: StatusHistoryEntry[] = order.statusHistory || [];
-  
-  // If no history, create one entry based on order creation
-  const timelineEntries = statusHistory.length > 0 
-    ? statusHistory 
-    : [{ status: order.status, timestamp: order.created_at }];
-
-  // Sort entries by timestamp
-  const sortedEntries = [...timelineEntries].sort((a, b) => {
-    return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-  });
+  // Create a basic timeline entry based on order creation since statusHistory doesn't exist
+  const timelineEntries = [
+    { 
+      status: order.status, 
+      timestamp: order.created_at,
+      user: order.technician || 'Sistema',
+      notes: `Ordem de serviço ${order.status === 'open' ? 'criada' : 'atualizada'}`
+    }
+  ];
 
   // Get icon for status
   const getStatusIcon = (status: string) => {
@@ -37,7 +35,7 @@ const OrderTimeline = ({ order }: OrderTimelineProps) => {
         return <PlayCircle className="h-5 w-5 text-orange-500" />;
       case 'completed':
         return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'canceled':
+      case 'cancelled':
         return <XCircle className="h-5 w-5 text-red-500" />;
       case 'waiting_parts':
         return <ShoppingBag className="h-5 w-5 text-purple-500" />;
@@ -57,7 +55,7 @@ const OrderTimeline = ({ order }: OrderTimelineProps) => {
         return 'Em andamento';
       case 'completed':
         return 'Concluída';
-      case 'canceled':
+      case 'cancelled':
         return 'Cancelada';
       case 'waiting_parts':
         return 'Aguardando peças';
@@ -70,13 +68,13 @@ const OrderTimeline = ({ order }: OrderTimelineProps) => {
 
   return (
     <div className="space-y-4">
-      {sortedEntries.length === 0 ? (
+      {timelineEntries.length === 0 ? (
         <div className="text-center p-4 border border-dashed rounded-md text-gray-500">
           Sem histórico de status disponível
         </div>
       ) : (
         <div className="relative border-l border-gray-200 pl-6 ml-4 space-y-10">
-          {sortedEntries.map((entry, index) => (
+          {timelineEntries.map((entry, index) => (
             <div key={index} className="relative">
               {/* Timeline dot */}
               <div className="absolute -left-[30px] border-2 border-white p-1 rounded-full bg-white">

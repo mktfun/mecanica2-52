@@ -18,14 +18,21 @@ export interface Lead {
   client_id?: string;
   vehicle_id?: string;
   
-  // Propriedades mantidas para compatibilidade, mas que não são mais usadas diretamente
-  vehicle_brand: string;
-  vehicle_model: string;
-  vehicle_year: string;
-  
   // Dados expandidos de relacionamentos
-  client?: any;
-  vehicle?: any;
+  client?: {
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+  };
+  vehicle?: {
+    id: string;
+    make: string;
+    model: string;
+    year?: string;
+    plate: string;
+    color?: string;
+  };
 }
 
 export type LeadStatus = 'new' | 'contacted' | 'negotiation' | 'scheduled' | 'converted' | 'lost';

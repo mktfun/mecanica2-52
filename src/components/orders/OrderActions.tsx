@@ -52,7 +52,7 @@ const OrderActions = ({
         return [
           { status: 'in_progress', label: 'Iniciar Serviço', icon: <Play className="h-4 w-4 mr-2" /> },
           { status: 'waiting_approval', label: 'Aguardando Aprovação', icon: <Clock className="h-4 w-4 mr-2" /> },
-          { status: 'canceled', label: 'Cancelar', icon: <Ban className="h-4 w-4 mr-2" /> }
+          { status: 'cancelled', label: 'Cancelar', icon: <Ban className="h-4 w-4 mr-2" /> }
         ];
       case 'in_progress':
         return [
@@ -63,18 +63,18 @@ const OrderActions = ({
       case 'waiting_parts':
         return [
           { status: 'in_progress', label: 'Retomar Serviço', icon: <Play className="h-4 w-4 mr-2" /> },
-          { status: 'canceled', label: 'Cancelar', icon: <Ban className="h-4 w-4 mr-2" /> }
+          { status: 'cancelled', label: 'Cancelar', icon: <Ban className="h-4 w-4 mr-2" /> }
         ];
       case 'waiting_approval':
         return [
           { status: 'in_progress', label: 'Iniciar Serviço', icon: <Play className="h-4 w-4 mr-2" /> },
-          { status: 'canceled', label: 'Cancelar', icon: <Ban className="h-4 w-4 mr-2" /> }
+          { status: 'cancelled', label: 'Cancelar', icon: <Ban className="h-4 w-4 mr-2" /> }
         ];
       case 'completed':
         return [
           { status: 'in_progress', label: 'Reabrir Serviço', icon: <Play className="h-4 w-4 mr-2" /> }
         ];
-      case 'canceled':
+      case 'cancelled':
         return [
           { status: 'open', label: 'Reativar', icon: <Play className="h-4 w-4 mr-2" /> }
         ];

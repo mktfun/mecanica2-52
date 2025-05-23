@@ -62,8 +62,10 @@ const AppointmentSelect = ({ onSelect }: AppointmentSelectProps) => {
 
   const formatAppointmentLabel = (appointment: Appointment): string => {
     const appointmentDate = new Date(appointment.start_time);
-    const customer = appointment.client_name || 'Cliente não especificado';
-    const vehicle = appointment.vehicle_info || 'Veículo não especificado';
+    const customer = appointment.client?.name || 'Cliente não especificado';
+    const vehicle = appointment.vehicle 
+      ? `${appointment.vehicle.make} ${appointment.vehicle.model} (${appointment.vehicle.plate})`
+      : 'Veículo não especificado';
     
     return `${formatDate(appointmentDate)} - ${customer} - ${vehicle}`;
   };

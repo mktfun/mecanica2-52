@@ -26,9 +26,10 @@ const PhotoUpload = ({ photos, onAddPhoto, onRemovePhoto, readOnly = false }: Ph
       
       const photo: OrderPhoto = {
         id: Date.now().toString(),
+        service_order_id: '', // Will be set when saving the order
         url: reader.result,
         description: description,
-        added_at: new Date().toISOString()
+        created_at: new Date().toISOString()
       };
       
       onAddPhoto(photo);

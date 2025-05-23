@@ -105,7 +105,7 @@ const PhotoGallery = ({ photos }: PhotoGalleryProps) => {
                     <p className="text-sm">{photos[selectedIndex].description}</p>
                   )}
                   <p className="text-xs text-gray-400">
-                    Adicionada em: {formatDate(new Date(photos[selectedIndex].added_at))}
+                    Adicionada em: {formatDate(new Date(photos[selectedIndex].created_at))}
                   </p>
                 </div>
                 <div className="mt-2 flex justify-center">

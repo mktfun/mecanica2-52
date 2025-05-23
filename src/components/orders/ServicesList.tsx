@@ -64,12 +64,15 @@ const ServicesList = ({
     if (!serviceType) return;
     
     const newService: OrderService = {
-      id: serviceType.id,
+      id: Date.now().toString(), // Temporary ID for new services
+      service_order_id: '', // Will be set when saving the order
+      service_id: serviceType.id,
       name: serviceType.name,
       description: serviceType.description,
       price: serviceType.price,
       quantity: 1,
-      completed: false
+      completed: false,
+      created_at: new Date().toISOString()
     };
     
     onAddService(newService);

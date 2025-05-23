@@ -168,37 +168,19 @@ const DailyView: React.FC<DailyViewProps> = ({ selectedDate }) => {
             <div className="p-4 text-sm text-center text-gray-400 dark:text-gray-500 border-r border-gray-50 dark:border-gray-700/30 font-mono">
               {`${hour.toString().padStart(2, '0')}:00`}
             </div>
-            <div className="p-4 min-h-[80px] flex items-start">
-              <div className="space-y-3 w-full">
-                {getAppointmentsForHour(hour).map(appointment => (
-                  <div
-                    key={appointment.id}
-                    className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl p-4 border border-blue-200/50 dark:border-blue-700/50 hover:shadow-md transition-all duration-200 cursor-pointer"
-                    onClick={() => handleAppointmentClick(appointment)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                          {appointment.client_name}
-                        </h4>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                          {appointment.service_type || 'Serviço geral'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
-                          {format(new Date(appointment.start_time), 'HH:mm')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="p-4 space-y-2">
+              {getAppointmentsForHour(hour).map(appointment => (
+                <AppointmentCard
+                  key={appointment.id}
+                  appointment={appointment}
+                  onClick={() => handleAppointmentClick(appointment)}
+                />
+              ))}
             </div>
           </div>
         ))}
       </div>
-
+      
       {selectedAppointment && (
         <AppointmentDetailsDialog
           appointment={selectedAppointment}

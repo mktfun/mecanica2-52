@@ -99,14 +99,6 @@ export interface OrderPhoto {
   created_at: string;
 }
 
-// Status history entry
-export interface StatusHistoryEntry {
-  status: OrderStatus;
-  timestamp: string;
-  user?: string;
-  notes?: string;
-}
-
 // Order status type
 export type OrderStatus = 'open' | 'in_progress' | 'waiting_parts' | 'waiting_approval' | 'completed' | 'cancelled';
 

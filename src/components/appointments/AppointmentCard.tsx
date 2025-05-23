@@ -32,6 +32,11 @@ export default function AppointmentCard({ appointment, onClick, condensed = fals
     }
   };
   
+  const clientName = appointment.client?.name || 'Cliente não especificado';
+  const vehicleInfo = appointment.vehicle 
+    ? `${appointment.vehicle.make} ${appointment.vehicle.model} (${appointment.vehicle.plate})`
+    : 'Veículo não especificado';
+  
   return (
     <div 
       className={cn(
@@ -46,7 +51,7 @@ export default function AppointmentCard({ appointment, onClick, condensed = fals
           <div className="flex justify-between items-center">
             <span className="text-xs font-medium">{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
           </div>
-          <div className="text-sm font-medium truncate">{appointment.client_name}</div>
+          <div className="text-sm font-medium truncate">{clientName}</div>
           <div className="text-xs truncate">{appointment.service_type}</div>
         </div>
       ) : (
@@ -54,10 +59,10 @@ export default function AppointmentCard({ appointment, onClick, condensed = fals
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium">{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
           </div>
-          <div className="text-base font-medium">{appointment.client_name}</div>
+          <div className="text-base font-medium">{clientName}</div>
           <div>
             <div className="text-sm truncate">
-              <span className="font-medium">Veículo:</span> {appointment.vehicle_info}
+              <span className="font-medium">Veículo:</span> {vehicleInfo}
             </div>
             <div className="text-sm truncate">
               <span className="font-medium">Serviço:</span> {appointment.service_type}

@@ -14,12 +14,24 @@ export interface Appointment {
   status: AppointmentStatus;
   notes?: string;
   estimated_cost?: number;
-  organization_id?: string;
+  organization_id: string;
   created_at: string;
   updated_at: string;
   // Propriedades expandidas para relacionamentos
-  client?: any;
-  vehicle?: any;
+  client?: {
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+  };
+  vehicle?: {
+    id: string;
+    make: string;
+    model: string;
+    year?: string;
+    plate: string;
+    color?: string;
+  };
 }
 
 export interface AppointmentFilter {

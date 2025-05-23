@@ -62,11 +62,14 @@ const PartsList = ({
     if (!part) return;
     
     const newPart: OrderPart = {
-      id: part.id,
+      id: Date.now().toString(), // Temporary ID for new parts
+      service_order_id: '', // Will be set when saving the order
+      part_id: part.id,
       name: part.name,
       code: part.code,
       price: part.price,
-      quantity: 1
+      quantity: 1,
+      created_at: new Date().toISOString()
     };
     
     onAddPart(newPart);
