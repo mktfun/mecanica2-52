@@ -1,205 +1,181 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
+import { Plus, Search, Filter, Eye, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  PlusCircle,
-  ArrowLeft
-} from 'lucide-react';
-import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
-import OrdersFilter from '@/components/orders/OrdersFilter';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { OrderStatusBadge } from '@/components/orders/OrderStatusBadge';
+import { OrdersFilter } from '@/components/orders/OrdersFilter';
 import { useOrders } from '@/hooks/useOrders';
+import { Order, OrderStatus } from '@/types/order';
 
 const OrdersList = () => {
   const navigate = useNavigate();
-  
-  const { 
-    filters, 
-    setFilters, 
-    pagination, 
-    setPagination, 
-    getPaginatedOrders 
-  } = useOrders();
-  
-  // Get paginated and filtered orders
-  const { orders, total } = getPaginatedOrders();
-  
-  // Handle page change
-  const handlePageChange = (newPage: number) => {
-    setPagination({ ...pagination, page: newPage });
-  };
-  
-  // Calculate total pages
-  const totalPages = Math.ceil(total / pagination.pageSize);
-  
-  // Handle filter changes
-  const handleFilterChange = (newFilters: any) => {
-    setFilters({ ...filters, ...newFilters });
-    // Reset to first page when filters change
-    setPagination({ ...pagination, page: 1 });
-  };
-  
-  // Navigate to order details
-  const handleViewOrder = (orderId: string) => {
+  const { orders, isLoading } = useOrders();
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
+  const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => {
+    let filtered = orders;
+
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(order =>
+        order.number.toString().includes(searchTerm) ||
+        order.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.vehicle?.make?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.vehicle?.model?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(order => order.status === statusFilter);
+    }
+
+    setFilteredOrders(filtered);
+  }, [orders, searchTerm, statusFilter]);
+
+  const handleOrderClick = (orderId: string) => {
     navigate(`/orders/${orderId}`);
   };
-  
-  // Navigate to create new order
-  const handleCreateOrder = () => {
-    navigate('/orders/new');
+
+  const handleEditOrder = (orderId: string) => {
+    navigate(`/orders/edit/${orderId}`);
   };
 
-  // Go back to orders overview
-  const handleBack = () => {
-    navigate('/orders');
-  };
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div>Carregando ordens de serviço...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" onClick={handleBack} className="p-0 h-auto">
-            <ArrowLeft className="h-5 w-5 mr-2" />
-            Voltar
-          </Button>
-          <h1 className="text-3xl font-bold text-gray-900">Lista Completa de Ordens</h1>
-        </div>
-        <Button onClick={handleCreateOrder}>
-          <PlusCircle className="h-4 w-4 mr-2" />
-          Nova Ordem de Serviço
+        <h1 className="text-3xl font-bold">Ordens de Serviço</h1>
+        
+        <Button onClick={() => navigate('/orders/new')}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nova OS
         </Button>
       </div>
-      
-      <OrdersFilter filters={filters} onFilterChange={handleFilterChange} />
-      
-      {orders.length === 0 ? (
-        <div className="bg-white rounded-md shadow p-8 text-center">
-          <h3 className="text-xl font-medium text-gray-900 mb-2">Nenhuma ordem de serviço encontrada</h3>
-          <p className="text-gray-500 mb-6">
-            {total === 0
-              ? "Você ainda não tem nenhuma ordem de serviço cadastrada."
-              : "Nenhuma ordem corresponde aos filtros selecionados."}
-          </p>
-          {total === 0 && (
-            <Button onClick={handleCreateOrder}>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Criar primeira ordem de serviço
-            </Button>
-          )}
-        </div>
-      ) : (
-        <>
-          <div className="rounded-md shadow overflow-hidden">
-            <Table>
-              <TableHeader className="bg-gray-50">
-                <TableRow>
-                  <TableHead>Nº</TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead className="hidden md:table-cell">Veículo</TableHead>
-                  <TableHead className="hidden lg:table-cell">Serviços</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orders.map(order => (
-                  <TableRow 
-                    key={order.id} 
-                    className="cursor-pointer hover:bg-gray-50"
-                    onClick={() => handleViewOrder(order.id)}
-                  >
-                    <TableCell className="font-medium text-blue-600">
-                      #{order.number}
-                    </TableCell>
-                    <TableCell>
-                      {formatDate(new Date(order.created_at))}
-                    </TableCell>
-                    <TableCell>
-                      {order.customer?.name || 'N/A'}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {order.vehicle ? (
-                        <div>
-                          <div>{order.vehicle.model}</div>
-                          <div className="text-xs text-gray-500">{order.vehicle.plate}</div>
-                        </div>
-                      ) : (
-                        'N/A'
-                      )}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {order.services && order.services.length > 0 ? (
-                        <ul className="list-none text-sm">
-                          {order.services.slice(0, 2).map((service, index) => (
-                            <li key={index}>{service.name}</li>
-                          ))}
-                          {order.services.length > 2 && (
-                            <li className="text-xs text-gray-500">
-                              +{order.services.length - 2} mais
-                            </li>
-                          )}
-                        </ul>
-                      ) : (
-                        'Nenhum serviço'
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(order.total)}
-                    </TableCell>
-                    <TableCell>
-                      <OrderStatusBadge status={order.status} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Exibindo {orders.length} de {total} ordens
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Lista de Ordens</CardTitle>
+            
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por número, cliente ou veículo..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 w-80"
+                />
               </div>
               
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  disabled={pagination.page === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                <div className="text-sm">
-                  Página {pagination.page} de {totalPages}
-                </div>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  disabled={pagination.page === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filtros
+              </Button>
             </div>
+          </div>
+          
+          {showFilters && (
+            <OrdersFilter
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+            />
           )}
-        </>
-      )}
+        </CardHeader>
+        
+        <CardContent>
+          <div className="grid gap-4">
+            {filteredOrders.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {orders.length === 0 ? 'Nenhuma ordem de serviço encontrada' : 'Nenhuma ordem encontrada com os filtros aplicados'}
+              </div>
+            ) : (
+              filteredOrders.map((order) => (
+                <Card key={order.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Badge variant="outline" className="font-mono">
+                            OS #{order.number}
+                          </Badge>
+                          <OrderStatusBadge status={order.status} />
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                          <div>
+                            <span className="font-medium">Cliente: </span>
+                            {order.client?.name || 'Cliente não informado'}
+                          </div>
+                          <div>
+                            <span className="font-medium">Veículo: </span>
+                            {order.vehicle ? 
+                              `${order.vehicle.make} ${order.vehicle.model} (${order.vehicle.year || ''})` : 
+                              'Veículo não informado'}
+                          </div>
+                          <div>
+                            <span className="font-medium">Total: </span>
+                            R$ {order.total?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                          </div>
+                        </div>
+                        
+                        {order.description && (
+                          <div className="mt-2 text-sm text-muted-foreground">
+                            {order.description}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-2 ml-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOrderClick(order.id);
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditOrder(order.id);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

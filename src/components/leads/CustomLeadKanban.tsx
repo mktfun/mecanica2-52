@@ -22,23 +22,24 @@ const LEAD_STATUSES = [
 ];
 
 const CustomLeadKanban: React.FC<CustomLeadKanbanProps> = ({ 
-  leads, 
+  leads = [], // Default to empty array to prevent undefined
   onUpdateLead, 
   onLeadClick 
 }) => {
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
 
-  // Organizar leads por status
+  // Organizar leads por status with null safety
   const columns = LEAD_STATUSES.reduce((acc, status) => {
     acc[status.id] = {
       id: status.id,
       title: status.title,
-      items: leads.filter(lead => lead.status === status.id) || []
+      items: Array.isArray(leads) ? leads.filter(lead => lead.status === status.id) : []
     };
     return acc;
   }, {} as Record<LeadStatus, { id: LeadStatus; title: string; items: Lead[] }>);
 
   const handleDragStart = (result: any) => {
+    if (!leads || !Array.isArray(leads)) return;
     const lead = leads.find(l => l.id === result.draggableId);
     setDraggedLead(lead || null);
   };
@@ -56,6 +57,8 @@ const CustomLeadKanban: React.FC<CustomLeadKanbanProps> = ({
     ) {
       return;
     }
+    
+    if (!leads || !Array.isArray(leads)) return;
     
     const lead = leads.find(l => l.id === draggableId);
     if (!lead) return;
@@ -82,6 +85,29 @@ const CustomLeadKanban: React.FC<CustomLeadKanbanProps> = ({
     if (daysSinceInteraction >= 2) return 'border-l-4 border-l-yellow-500';
     return 'border-l-4 border-l-green-500';
   };
+
+  // Show loading or empty state if leads is not properly loaded
+  if (!leads || !Array.isArray(leads)) {
+    return (
+      <div className="w-full overflow-x-auto pb-6">
+        <div className="flex gap-6 min-h-[calc(100vh-250px)]">
+          {LEAD_STATUSES.map(status => (
+            <div key={status.id} className="min-w-[280px] w-[280px] flex flex-col">
+              <div className="bg-muted rounded-t-lg p-3 flex justify-between items-center border-b-2 border-border">
+                <h3 className="font-semibold text-sm">{status.title}</h3>
+                <Badge variant="secondary" className="rounded-full">0</Badge>
+              </div>
+              <div className="flex-1 p-2 bg-muted/40 rounded-b-lg overflow-y-auto">
+                <div className="text-center p-4 text-sm text-muted-foreground">
+                  Carregando leads...
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full overflow-x-auto pb-6">
