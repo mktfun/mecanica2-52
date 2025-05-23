@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   leadsStore, 
   appointmentsStore, 
@@ -9,16 +10,18 @@ import {
 import { getDateRange } from '../utils/formatters';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { 
-  RevenueCard, 
-  LeadsCard, 
-  AppointmentsCard, 
-  OrdersCard,
-  RevenueChart,
-  LeadsConversionChart
-} from '@/components/dashboard';
+import { BentoGrid, BentoCard } from '@/components/ui/bento-grid';
+import { Calendar, Clipboard, Users, PlusCircle, BarChart } from 'lucide-react';
+
+// Componentes dos cards Bento
+import UpcomingAppointmentsCard from '@/components/dashboard/bento/UpcomingAppointmentsCard';
+import OpenOrdersCard from '@/components/dashboard/bento/OpenOrdersCard';
+import NewLeadsCard from '@/components/dashboard/bento/NewLeadsCard';
+import QuickCreateOrderCard from '@/components/dashboard/bento/QuickCreateOrderCard';
+import RevenueChartCard from '@/components/dashboard/bento/RevenueChartCard';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState({
     revenue: {
@@ -27,31 +30,25 @@ const Dashboard = () => {
       monthly: 0,
       previousMonth: 0
     },
-    leads: {
-      total: 0,
-      converted: 0,
-      pending: 0,
-      conversionRate: 0
-    },
-    appointments: {
-      today: 0,
-      pending: 0
-    },
-    orders: {
-      inProgress: 0,
-      completed: 0,
-      pending: 0
-    }
+    leads: [],
+    appointments: [],
+    orders: [],
+    financialData: []
   });
   
   useEffect(() => {
     loadDashboardData();
   }, []);
   
-  // Carrega dados do dashboard do armazenamento local
   const loadDashboardData = () => {
     try {
       setIsLoading(true);
+      
+      // Carrega todos os dados
+      const leadsData = leadsStore.getAll();
+      const appointmentsData = appointmentsStore.getAll();
+      const ordersData = ordersStore.getAll();
+      const financialData = financialStore.getAll();
       
       // Obtém ranges de data para filtros
       const { 
@@ -61,9 +58,6 @@ const Dashboard = () => {
         previousMonthStart, 
         previousMonthEnd 
       } = getDateRange();
-      
-      // Carrega dados financeiros
-      const financialData = financialStore.getAll();
       
       // Calcula receitas por período
       const dailyRevenue = calculateRevenue(financialData, today);
@@ -75,38 +69,6 @@ const Dashboard = () => {
         previousMonthEnd
       );
       
-      // Carrega leads
-      const leadsData = leadsStore.getAll();
-      const totalLeads = leadsData.length;
-      const convertedLeads = leadsData.filter(lead => lead.status === 'converted').length;
-      const pendingLeads = leadsData.filter(lead => lead.status !== 'converted' && lead.status !== 'lost').length;
-      const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
-      
-      // Carrega agendamentos
-      const appointmentsData = appointmentsStore.getAll();
-      const todayAppointments = appointmentsData.filter(appointment => {
-        const appointmentDate = new Date(appointment.start_time);
-        return appointmentDate.toDateString() === today.toDateString();
-      }).length;
-      
-      const pendingAppointments = appointmentsData.filter(
-        appointment => appointment.status === 'scheduled'
-      ).length;
-      
-      // Carrega ordens de serviço
-      const ordersData = ordersStore.getAll();
-      const inProgressOrders = ordersData.filter(
-        order => order.status === 'in_progress'
-      ).length;
-      
-      const completedOrders = ordersData.filter(
-        order => order.status === 'completed'
-      ).length;
-      
-      const pendingOrders = ordersData.filter(
-        order => order.status === 'pending'
-      ).length;
-      
       // Atualiza estado com dados calculados
       setDashboardData({
         revenue: {
@@ -115,21 +77,10 @@ const Dashboard = () => {
           monthly: monthlyRevenue,
           previousMonth: previousMonthRevenue
         },
-        leads: {
-          total: totalLeads,
-          converted: convertedLeads,
-          pending: pendingLeads,
-          conversionRate
-        },
-        appointments: {
-          today: todayAppointments,
-          pending: pendingAppointments
-        },
-        orders: {
-          inProgress: inProgressOrders,
-          completed: completedOrders,
-          pending: pendingOrders
-        }
+        leads: leadsData,
+        appointments: appointmentsData,
+        orders: ordersData,
+        financialData
       });
       
       toast.success('Dados do dashboard atualizados');
@@ -150,6 +101,54 @@ const Dashboard = () => {
       })
       .reduce((total, item) => total + (Number(item.amount) || 0), 0);
   };
+
+  const bentoCards = [
+    {
+      Icon: Calendar,
+      name: 'Próximos Agendamentos',
+      description: 'Veja os próximos compromissos agendados',
+      cta: 'Ver Agenda Completa',
+      background: <UpcomingAppointmentsCard data={dashboardData.appointments} />,
+      className: 'md:col-span-2 lg:row-span-2',
+      onCtaClick: () => navigate('/appointments')
+    },
+    {
+      Icon: Clipboard,
+      name: 'Ordens Abertas',
+      description: 'Acompanhe as ordens de serviço em andamento',
+      cta: 'Ver Todas as Ordens',
+      background: <OpenOrdersCard data={dashboardData.orders} />,
+      className: 'md:col-span-1',
+      onCtaClick: () => navigate('/orders')
+    },
+    {
+      Icon: Users,
+      name: 'Novos Leads',
+      description: 'Leads gerados na última semana',
+      cta: 'Gerenciar Leads',
+      background: <NewLeadsCard data={dashboardData.leads} />,
+      className: 'md:col-span-1',
+      onCtaClick: () => navigate('/leads')
+    },
+    {
+      Icon: PlusCircle,
+      name: 'Criar Nova OS',
+      description: 'Inicie rapidamente uma nova ordem de serviço',
+      cta: 'Criar Agora',
+      background: <QuickCreateOrderCard />,
+      className: 'md:col-span-1',
+      onCtaClick: () => navigate('/orders/new')
+    },
+    {
+      Icon: BarChart,
+      name: 'Faturamento',
+      description: 'Acompanhe o desempenho financeiro mensal',
+      cta: 'Ver Relatórios Detalhados',
+      background: <RevenueChartCard data={dashboardData.financialData} />,
+      className: 'md:col-span-2',
+      onCtaClick: () => navigate('/reports')
+    }
+  ];
   
   return (
     <div className="p-6">
@@ -163,23 +162,17 @@ const Dashboard = () => {
         </Button>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <RevenueCard data={dashboardData.revenue} />
-        <LeadsCard data={dashboardData.leads} />
-        <AppointmentsCard data={dashboardData.appointments} />
-        <OrdersCard data={dashboardData.orders} />
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <RevenueChart />
-        <LeadsConversionChart />
-      </div>
+      <BentoGrid className="mb-6">
+        {bentoCards.map((card) => (
+          <BentoCard key={card.name} {...card} />
+        ))}
+      </BentoGrid>
       
       {/* Mensagem quando não há dados */}
       {!dashboardData.revenue.monthly && 
-       !dashboardData.leads.total && 
-       !dashboardData.appointments.today && 
-       !dashboardData.orders.inProgress && (
+       !dashboardData.leads.length && 
+       !dashboardData.appointments.length && 
+       !dashboardData.orders.length && (
         <div className="bg-blue-50 p-4 rounded-lg mt-6 text-center">
           <p className="text-blue-800">
             Não há dados para exibir. Comece adicionando clientes, leads, agendamentos e ordens de serviço.
