@@ -5,7 +5,7 @@ import authService from '../../services/authService';
 import Sidebar from './NewSidebar';
 import Header from './Header';
 import MobileHeader from './MobileHeader';
-import MobileBottomNav from './MobileBottomNav';
+import FloatingNavigation from './FloatingNavigation';
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const Layout = () => {
@@ -41,14 +41,16 @@ const Layout = () => {
         
         {/* Conteúdo principal */}
         <ScrollArea className="flex-1">
-          <main className="p-4 lg:p-6 pb-20 lg:pb-6 min-h-full">
+          <main className="p-4 lg:p-6 pb-24 lg:pb-6 min-h-full">
             <Outlet />
           </main>
         </ScrollArea>
       </div>
       
-      {/* Navegação inferior mobile */}
-      <MobileBottomNav />
+      {/* Navegação flutuante - apenas mobile */}
+      <div className="lg:hidden">
+        <FloatingNavigation />
+      </div>
     </div>
   );
 };

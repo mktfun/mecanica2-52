@@ -19,39 +19,39 @@ const MobileHeader = () => {
           <h1 className="text-lg font-bold text-blue-800 dark:text-blue-400">MecânicaPro</h1>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate('/reports')}
+            aria-label="Relatórios"
             className="h-9 w-9"
           >
             <PieChart className="h-5 w-5" />
-            <span className="sr-only">Relatórios</span>
           </Button>
           
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate('/settings')}
+            aria-label="Configurações"
             className="h-9 w-9"
           >
             <Settings className="h-5 w-5" />
-            <span className="sr-only">Configurações</span>
           </Button>
           
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate('/settings')}
+            aria-label="Perfil"
             className="h-9 w-9"
           >
-            <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center">
+            <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center">
               <span className="text-blue-800 font-medium text-xs">
                 {currentUser?.name.charAt(0) || 'U'}
               </span>
             </div>
-            <span className="sr-only">Perfil</span>
           </Button>
         </div>
       </div>
