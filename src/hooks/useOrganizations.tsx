@@ -9,10 +9,12 @@ interface Organization {
   created_at: string;
 }
 
+type MemberRole = 'admin' | 'member' | 'viewer';
+
 interface OrganizationMember {
   organization_id: string;
   user_id: string;
-  role: 'admin' | 'member' | 'viewer';
+  role: MemberRole;
   created_at: string;
 }
 
@@ -79,8 +81,16 @@ export const useOrganizations = () => {
         throw error;
       }
 
-      setMembers(data);
-      return data;
+      // Certifique-se de que os membros correspondem ao tipo OrganizationMember
+      const typedMembers: OrganizationMember[] = data.map(member => ({
+        organization_id: member.organization_id,
+        user_id: member.user_id,
+        role: member.role as MemberRole,
+        created_at: member.created_at
+      }));
+
+      setMembers(typedMembers);
+      return typedMembers;
     } catch (err: any) {
       console.error('Erro ao buscar membros da organização:', err);
       toast.error('Erro ao carregar membros da organização');
@@ -142,11 +152,11 @@ export const useOrganizations = () => {
   };
 
   // Adicionar membro à organização atual
-  const addOrganizationMember = async (orgId: string, email: string, role: 'admin' | 'member' | 'viewer') => {
+  const addOrganizationMember = async (orgId: string, email: string, role: MemberRole) => {
     try {
-      // Buscar o usuário pelo e-mail
+      // Buscar o usuário pelo e-mail (corrigindo a consulta)
       const { data: userData, error: userError } = await supabase
-        .from('users')
+        .from('profiles') // Usamos profiles ao invés de users, assumindo que você tem uma tabela profiles que armazena emails
         .select('id')
         .eq('email', email)
         .single();
