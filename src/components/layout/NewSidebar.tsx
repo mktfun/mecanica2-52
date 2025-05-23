@@ -1,4 +1,3 @@
-
 import React, { useState, createContext, useContext } from "react";
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from "framer-motion";
@@ -6,13 +5,14 @@ import authService from '@/services/authService';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { 
-  HomeIcon, 
+  Home, 
   Users, 
   Calendar, 
-  FileText, 
+  Clipboard, 
   Settings, 
   LogOut,
-  BarChart,
+  TrendingUp,
+  PieChart,
   Bell,
   Menu,
   X,
@@ -100,8 +100,9 @@ export const SidebarBody = ({
     navigate('/login');
   };
   
+  // Atualização dos ícones para Feather Icons (equivalentes em lucide-react)
   const navItems = [
-    { path: '/dashboard', name: 'Dashboard', icon: <HomeIcon className="h-5 w-5" /> },
+    { path: '/dashboard', name: 'Dashboard', icon: <Home className="h-5 w-5" /> },
     { path: '/leads', name: 'Leads', icon: <Users className="h-5 w-5" /> },
     { 
       path: '/appointments', 
@@ -109,9 +110,9 @@ export const SidebarBody = ({
       icon: <Calendar className="h-5 w-5" />,
       notification: 3,
     },
-    { path: '/orders', name: 'Ordens de Serviço', icon: <FileText className="h-5 w-5" /> },
-    { path: '/marketing', name: 'Marketing Digital', icon: <BarChart className="h-5 w-5" /> },
-    { path: '/reports', name: 'Relatórios', icon: <BarChart className="h-5 w-5" /> },
+    { path: '/orders', name: 'Ordens de Serviço', icon: <Clipboard className="h-5 w-5" /> },
+    { path: '/marketing', name: 'Marketing Digital', icon: <TrendingUp className="h-5 w-5" /> },
+    { path: '/reports', name: 'Relatórios', icon: <PieChart className="h-5 w-5" /> },
     { path: '/settings', name: 'Configurações', icon: <Settings className="h-5 w-5" /> },
   ];
   
