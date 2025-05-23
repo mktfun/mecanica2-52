@@ -2,406 +2,326 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Edit, Save, X, Calendar, User, Car, Wrench, FileText, DollarSign } from 'lucide-react';
 import { Order } from '@/types/order';
-import { formatCurrency, formatDate, formatDateTime } from '@/utils/formatters';
 import { useOrders } from '@/hooks/useOrders';
+import { formatCurrency, formatDateTime } from '@/utils/formatters';
 import OrderStatusBadge from '@/components/orders/OrderStatusBadge';
 import ServicesList from '@/components/orders/ServicesList';
 import PartsList from '@/components/orders/PartsList';
 import PhotoGallery from '@/components/orders/PhotoGallery';
-import OrderActions from '@/components/orders/OrderActions';
 import OrderTimeline from '@/components/orders/OrderTimeline';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import OrderActions from '@/components/orders/OrderActions';
+import { toast } from 'sonner';
 
 const OrderDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { updateOrderStatus, deleteOrder } = useOrders();
-  
   const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  
-  // Get order data from localStorage
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const { getOrderById, updateOrder } = useOrders();
+
   useEffect(() => {
-    if (!id) {
-      setError('ID de ordem inválido');
-      setLoading(false);
-      return;
-    }
-    
-    try {
-      const orderData = localStorage.getItem('mecanicapro_orders');
-      if (orderData) {
-        const orders = JSON.parse(orderData);
-        const foundOrder = orders.find((o: Order) => o.id === id);
-        
-        if (foundOrder) {
-          setOrder(foundOrder);
-        } else {
-          setError('Ordem de serviço não encontrada');
-        }
-      } else {
-        setError('Nenhuma ordem de serviço cadastrada');
+    const fetchOrder = async () => {
+      if (!id) return;
+      
+      setIsLoading(true);
+      try {
+        const orderData = await getOrderById(id);
+        setOrder(orderData);
+      } catch (error) {
+        console.error('Erro ao carregar ordem de serviço:', error);
+        toast.error('Erro ao carregar ordem de serviço');
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      console.error('Erro ao carregar ordem de serviço:', err);
-      setError('Erro ao carregar ordem de serviço');
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-  
-  // Handle edit order
-  const handleEdit = () => {
-    navigate(`/orders/edit/${id}`);
-  };
-  
-  // Handle delete order
-  const handleDelete = () => {
-    setShowDeleteDialog(true);
-  };
-  
-  // Confirm delete order
-  const confirmDelete = () => {
-    if (!id) return;
+    };
+
+    fetchOrder();
+  }, [id, getOrderById]);
+
+  const handleSave = async () => {
+    if (!order) return;
     
     try {
-      deleteOrder(id);
-      navigate('/orders', { replace: true });
-    } catch (err) {
-      console.error('Erro ao excluir ordem:', err);
+      await updateOrder(order.id, order);
+      setIsEditing(false);
+      toast.success('Ordem de serviço atualizada com sucesso');
+    } catch (error) {
+      console.error('Erro ao atualizar ordem de serviço:', error);
+      toast.error('Erro ao atualizar ordem de serviço');
     }
   };
-  
-  // Handle status change
-  const handleStatusChange = (newStatus: any) => {
-    if (!id || !order) return;
-    
-    try {
-      const updatedOrder = updateOrderStatus(id, newStatus);
-      if (updatedOrder) {
-        setOrder(updatedOrder);
-      }
-    } catch (err) {
-      console.error('Erro ao atualizar status:', err);
-    }
-  };
-  
-  // Print order
-  const handlePrint = () => {
-    window.print();
-  };
-  
-  // Export as PDF
-  const handleExportPDF = () => {
-    alert('Em um sistema real, esta funcionalidade exportaria a O.S. em PDF');
-  };
-  
-  // Send to customer
-  const handleSendToCustomer = () => {
-    alert('Em um sistema real, esta funcionalidade enviaria a O.S. por email ao cliente');
-  };
-  
-  // Go back to orders list
-  const handleBack = () => {
-    navigate('/orders');
-  };
-  
-  if (loading) {
+
+  if (isLoading) {
     return (
-      <div className="p-6 flex justify-center items-center h-80">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-gray-500">Carregando ordem de serviço...</p>
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/orders')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
     );
   }
-  
-  if (error || !order) {
+
+  if (!order) {
     return (
-      <div className="p-6">
-        <Button variant="ghost" onClick={handleBack} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar para a lista
-        </Button>
-        
-        <Card className="border-red-200">
-          <CardContent className="pt-6 text-center">
-            <h2 className="text-xl font-bold text-red-600 mb-2">Erro</h2>
-            <p className="text-gray-600">{error || 'Ordem de serviço não encontrada'}</p>
-            <Button onClick={handleBack} className="mt-4">
-              Voltar para a lista de ordens
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/orders')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-3xl font-bold">Ordem de Serviço não encontrada</h1>
+        </div>
+        <Card>
+          <CardContent className="text-center py-8">
+            <p className="text-gray-500">A ordem de serviço solicitada não foi encontrada.</p>
+            <Button className="mt-4" onClick={() => navigate('/orders')}>
+              Voltar para Ordens de Serviço
             </Button>
           </CardContent>
         </Card>
       </div>
     );
   }
-  
+
   return (
-    <div className="p-6 space-y-6 pb-16">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" onClick={handleBack} className="p-0 h-auto">
-            <ArrowLeft className="h-5 w-5 mr-2" />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/orders')}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Ordem de Serviço #{order.number}
-            </h1>
-            <div className="text-sm text-gray-500">
+            <h1 className="text-3xl font-bold">OS #{order.number}</h1>
+            <p className="text-gray-500">
               Criada em {formatDateTime(new Date(order.created_at))}
-            </div>
+            </p>
           </div>
         </div>
         
-        <div className="flex items-center space-x-3">
-          <OrderStatusBadge status={order.status} className="text-sm h-7" />
-          <OrderActions 
-            order={order} 
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onStatusChange={handleStatusChange}
-            onPrint={handlePrint}
-            onExportPDF={handleExportPDF}
-            onSendToCustomer={handleSendToCustomer}
-          />
+        <div className="flex items-center gap-2">
+          <OrderStatusBadge status={order.status} />
+          {isEditing ? (
+            <>
+              <Button onClick={handleSave} size="sm">
+                <Save className="h-4 w-4 mr-2" />
+                Salvar
+              </Button>
+              <Button variant="outline" onClick={() => setIsEditing(false)} size="sm">
+                <X className="h-4 w-4 mr-2" />
+                Cancelar
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => setIsEditing(true)} size="sm">
+              <Edit className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          )}
         </div>
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row md:justify-between gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Cliente</h3>
-                    <div className="text-lg font-medium">{order.customer?.name || 'N/A'}</div>
-                    {order.customer?.phone && <div className="text-gray-600">{order.customer.phone}</div>}
-                    {order.customer?.email && <div className="text-gray-600">{order.customer.email}</div>}
-                  </div>
-                  
-                  {order.technician && (
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500">Técnico Responsável</h3>
-                      <div className="text-base">{order.technician}</div>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Veículo</h3>
-                    <div className="text-lg font-medium">{order.vehicle?.model || 'N/A'}</div>
-                    <div className="text-gray-600">
-                      {order.vehicle?.plate && <span>Placa: {order.vehicle.plate}</span>}
-                      {order.vehicle?.year && <span className="ml-2">Ano: {order.vehicle.year}</span>}
-                    </div>
-                    {order.vehicle?.color && <div className="text-gray-600">Cor: {order.vehicle.color}</div>}
-                  </div>
-                  
-                  {order.completedAt && (
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500">Data de Conclusão</h3>
-                      <div className="text-base">{formatDateTime(new Date(order.completedAt))}</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <Separator className="my-6" />
-              
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Informações do Cliente */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <User className="h-4 w-4 mr-2" />
+              Cliente
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
               <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Descrição do Problema</h3>
-                <div className="bg-gray-50 p-4 rounded-md">
-                  {order.description || 'Nenhuma descrição fornecida'}
-                </div>
+                <p className="text-sm text-gray-500">Nome</p>
+                <p className="font-medium">{order.client?.name || 'Cliente não especificado'}</p>
               </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Serviços</h3>
-              <ServicesList 
-                services={order.services || []} 
-                onAddService={() => {}} 
-                onRemoveService={() => {}} 
-                onUpdateQuantity={() => {}} 
-                readOnly={true} 
-              />
-            </CardContent>
-          </Card>
-          
-          {order.parts && order.parts.length > 0 && (
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-lg font-medium mb-4">Peças</h3>
-                <PartsList 
-                  parts={order.parts} 
-                  onAddPart={() => {}} 
-                  onRemovePart={() => {}} 
-                  onUpdateQuantity={() => {}} 
-                  readOnly={true} 
-                />
-              </CardContent>
-            </Card>
-          )}
-          
-          {order.photos && order.photos.length > 0 && (
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-lg font-medium mb-4">Fotos</h3>
-                <PhotoGallery photos={order.photos} />
-              </CardContent>
-            </Card>
-          )}
-          
-          {(order.notes || order.recommendations) && (
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-lg font-medium mb-4">Observações e Recomendações</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {order.notes && (
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 mb-2">Observações Internas</h4>
-                      <div className="bg-gray-50 p-4 rounded-md">
-                        {order.notes}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {order.recommendations && (
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 mb-2">Recomendações ao Cliente</h4>
-                      <div className="bg-gray-50 p-4 rounded-md">
-                        {order.recommendations}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-        
-        <div className="space-y-6">
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Resumo Financeiro</h3>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Serviços:</span>
-                  <span>
-                    {formatCurrency(
-                      (order.services || []).reduce(
-                        (sum, service) => sum + (service.price * service.quantity),
-                        0
-                      )
-                    )}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Peças:</span>
-                  <span>
-                    {formatCurrency(
-                      (order.parts || []).reduce(
-                        (sum, part) => sum + (part.price * part.quantity),
-                        0
-                      )
-                    )}
-                  </span>
-                </div>
-                
-                {order.laborCost > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Mão de obra:</span>
-                    <span>{formatCurrency(order.laborCost)}</span>
-                  </div>
-                )}
-                
-                <Separator className="my-2" />
-                
-                <div className="flex justify-between font-medium">
-                  <span>Subtotal:</span>
-                  <span>{formatCurrency(order.subtotal)}</span>
-                </div>
-                
-                {order.discount > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>Desconto ({order.discount}%):</span>
-                    <span>-{formatCurrency(order.discountAmount)}</span>
-                  </div>
-                )}
-                
-                {order.tax > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Imposto ({order.tax}%):</span>
-                    <span>{formatCurrency(order.taxAmount)}</span>
-                  </div>
-                )}
-                
-                <Separator className="my-2" />
-                
-                <div className="flex justify-between text-lg font-bold">
-                  <span>Total:</span>
-                  <span>{formatCurrency(order.total)}</span>
-                </div>
+              <div>
+                <p className="text-sm text-gray-500">Telefone</p>
+                <p>{order.client?.phone || 'Não informado'}</p>
               </div>
-              
-              <div className="mt-6 flex justify-center">
-                <Button onClick={handlePrint} className="w-full">
-                  Imprimir Ordem de Serviço
-                </Button>
+              <div>
+                <p className="text-sm text-gray-500">Email</p>
+                <p>{order.client?.email || 'Não informado'}</p>
               </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Histórico de Status</h3>
-              <OrderTimeline order={order} />
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Informações do Veículo */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <Car className="h-4 w-4 mr-2" />
+              Veículo
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div>
+                <p className="text-sm text-gray-500">Veículo</p>
+                <p className="font-medium">
+                  {order.vehicle 
+                    ? `${order.vehicle.make} ${order.vehicle.model} ${order.vehicle.year || ''}` 
+                    : 'Veículo não especificado'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Placa</p>
+                <p>{order.vehicle?.plate || 'Não informada'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Cor</p>
+                <p>{order.vehicle?.color || 'Não informada'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Status e Datas */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <Calendar className="h-4 w-4 mr-2" />
+              Status e Datas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div>
+                <p className="text-sm text-gray-500">Status</p>
+                <OrderStatusBadge status={order.status} />
+              </div>
+              {order.completed_at && (
+                <div>
+                  <p className="text-sm text-gray-500">Concluída em</p>
+                  <p>{formatDateTime(new Date(order.completed_at))}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-sm text-gray-500">Técnico</p>
+                <p>{order.technician || 'Não atribuído'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-      
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Você tem certeza que deseja excluir a Ordem de Serviço #{order.number}?
-              Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
+      <Separator />
+
+      {/* Resumo Financeiro */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <DollarSign className="h-5 w-5 mr-2" />
+            Resumo Financeiro
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Mão de obra</p>
+              <p className="text-lg font-semibold">{formatCurrency(order.labor_cost || 0)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Subtotal</p>
+              <p className="text-lg font-semibold">{formatCurrency(order.subtotal || 0)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Desconto ({order.discount_percent || 0}%)</p>
+              <p className="text-lg font-semibold text-red-600">-{formatCurrency(order.discount_amount || 0)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Impostos ({order.tax_percent || 0}%)</p>
+              <p className="text-lg font-semibold">{formatCurrency(order.tax_amount || 0)}</p>
+            </div>
+          </div>
+          <Separator className="my-4" />
+          <div className="flex justify-between items-center">
+            <p className="text-xl font-bold">Total</p>
+            <p className="text-2xl font-bold text-green-600">{formatCurrency(order.total || 0)}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Serviços */}
+      <ServicesList
+        services={order.services}
+        onServicesChange={(services) => setOrder({ ...order, services })}
+        isEditing={isEditing}
+      />
+
+      {/* Peças */}
+      <PartsList
+        parts={order.parts}
+        onPartsChange={(parts) => setOrder({ ...order, parts })}
+        isEditing={isEditing}
+      />
+
+      {/* Fotos */}
+      <PhotoGallery
+        photos={order.photos}
+        onPhotosChange={(photos) => setOrder({ ...order, photos })}
+        isEditing={isEditing}
+      />
+
+      {/* Observações e Recomendações */}
+      {(order.notes || order.recommendations) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {order.notes && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FileText className="h-5 w-5 mr-2" />
+                  Observações
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="whitespace-pre-wrap">{order.notes}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {order.recommendations && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Wrench className="h-5 w-5 mr-2" />
+                  Recomendações
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="whitespace-pre-wrap">{order.recommendations}</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Ações da Ordem */}
+      <OrderActions order={order} onOrderUpdate={(updatedOrder) => setOrder(updatedOrder)} />
     </div>
   );
 };

@@ -1,69 +1,91 @@
 
 import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
-import { toast } from "sonner";
-import { useEventSubscription } from '@/hooks/useEventSubscription';
-import { supabase } from '@/integrations/supabase/client';
-
-import CustomLeadKanban from "@/components/leads/CustomLeadKanban";
-import LeadList from "@/components/leads/LeadList";
+import { Plus, LayoutGrid, List as ListIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import LeadKanban from '@/components/leads/LeadKanban';
+import LeadList from '@/components/leads/LeadList';
+import CustomLeadKanban from '@/components/leads/CustomLeadKanban';
 import { LeadFormModal } from '@/components/leads/LeadFormModal';
+import { useLeads } from '@/hooks/useLeads';
+
+type ViewType = 'kanban' | 'list';
 
 const Leads = () => {
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<ViewType>('kanban');
+  const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState(null);
+  const { leads, updateLead } = useLeads();
 
-  const handleAddLead = () => {
-    setIsFormOpen(true);
+  const handleUpdateLead = (leadId: string, updates: any) => {
+    updateLead(leadId, updates);
   };
 
-  const handleLeadAdded = () => {
-    setIsFormOpen(false);
-    toast.success("Lead adicionado com sucesso!");
+  const handleLeadClick = (lead: any) => {
+    setSelectedLead(lead);
   };
 
-  // Configura a escuta de eventos do Supabase para leads
-  useEventSubscription('mecanicapro_leads:created', (lead) => {
-    console.log('Novo lead criado:', lead);
-    // Você pode fazer algo aqui, como mostrar uma notificação específica
-  });
-
-  useEventSubscription('mecanicapro_leads:updated', (lead) => {
-    console.log('Lead atualizado:', lead);
-    // Você pode fazer algo aqui, como atualizar estatísticas
-  });
+  const handleNewLeadAdded = () => {
+    setIsNewLeadModalOpen(false);
+  };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Gerenciamento de Leads</h1>
-        <Button onClick={handleAddLead} className="flex items-center gap-1">
-          <PlusCircle className="h-4 w-4" />
-          <span>Novo Lead</span>
-        </Button>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Leads</h1>
+        
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Button
+              variant={currentView === 'kanban' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setCurrentView('kanban')}
+            >
+              <LayoutGrid className="h-4 w-4 mr-1" />
+              Kanban
+            </Button>
+            
+            <Button
+              variant={currentView === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setCurrentView('list')}
+            >
+              <ListIcon className="h-4 w-4 mr-1" />
+              Lista
+            </Button>
+          </div>
+          
+          <Button onClick={() => setIsNewLeadModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Lead
+          </Button>
+        </div>
       </div>
 
-      <Tabs defaultValue="kanban" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="kanban">Kanban</TabsTrigger>
-          <TabsTrigger value="list">Lista</TabsTrigger>
-        </TabsList>
-        <TabsContent value="kanban" className="mt-0">
-          <CustomLeadKanban />
-        </TabsContent>
-        <TabsContent value="list" className="mt-0">
-          <LeadList />
-        </TabsContent>
-      </Tabs>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {currentView === 'kanban' ? 'Pipeline de Leads' : 'Lista de Leads'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {currentView === 'kanban' ? (
+            <CustomLeadKanban
+              leads={leads}
+              onUpdateLead={handleUpdateLead}
+              onLeadClick={handleLeadClick}
+            />
+          ) : (
+            <LeadList />
+          )}
+        </CardContent>
+      </Card>
 
-      {isFormOpen && (
-        <LeadFormModal 
-          open={isFormOpen} 
-          onOpenChange={setIsFormOpen} 
-          onLeadAdded={handleLeadAdded}
-        />
-      )}
+      <LeadFormModal
+        open={isNewLeadModalOpen}
+        onOpenChange={setIsNewLeadModalOpen}
+        onLeadAdded={handleNewLeadAdded}
+      />
     </div>
   );
 };

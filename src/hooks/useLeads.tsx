@@ -61,7 +61,7 @@ export const useLeads = () => {
         throw error;
       }
 
-      // Mapear os dados para incluir os relacionamentos
+      // Mapear os dados para incluir os relacionamentos e corrigir tipos
       const formattedLeads: Lead[] = data.map(lead => ({
         id: lead.id,
         name: lead.name,
@@ -71,7 +71,7 @@ export const useLeads = () => {
         source: lead.source || 'direct',
         potential_value: lead.potential_value || 0,
         assigned_to: lead.assigned_to || '',
-        status: lead.status as LeadStatus,
+        status: lead.status as LeadStatus, // Cast explícito para o tipo correto
         notes: lead.notes || '',
         created_at: lead.created_at,
         updated_at: lead.updated_at,
@@ -131,7 +131,7 @@ export const useLeads = () => {
           source: data[0].source || 'direct',
           potential_value: data[0].potential_value || 0,
           assigned_to: data[0].assigned_to || '',
-          status: data[0].status as LeadStatus,
+          status: data[0].status as LeadStatus, // Cast explícito
           notes: data[0].notes || '',
           created_at: data[0].created_at,
           updated_at: data[0].updated_at,
@@ -170,20 +170,29 @@ export const useLeads = () => {
 
       // Atualizar a lista de leads localmente
       if (data && data[0]) {
+        const formattedLead: Lead = {
+          ...data[0],
+          email: data[0].email || '',
+          service_interest: data[0].service_interest || '',
+          source: data[0].source || 'direct',
+          potential_value: data[0].potential_value || 0,
+          assigned_to: data[0].assigned_to || '',
+          notes: data[0].notes || '',
+          status: data[0].status as LeadStatus, // Cast explícito
+          client_id: data[0].client_id || undefined,
+          vehicle_id: data[0].vehicle_id || undefined,
+          client: data[0].client,
+          vehicle: data[0].vehicle
+        };
+        
         setLeads(prevLeads => 
           prevLeads.map(lead => 
-            lead.id === id ? { 
-              ...lead, 
-              ...data[0],
-              status: data[0].status as LeadStatus,
-              client: data[0].client,
-              vehicle: data[0].vehicle
-            } : lead
+            lead.id === id ? formattedLead : lead
           )
         );
         
         toast.success('Lead atualizado com sucesso');
-        return data[0];
+        return formattedLead;
       }
     } catch (err: any) {
       console.error('Erro ao atualizar lead:', err);
@@ -223,19 +232,29 @@ export const useLeads = () => {
 
       // Atualizar a lista de leads localmente
       if (data && data[0]) {
+        const formattedLead: Lead = {
+          ...data[0],
+          email: data[0].email || '',
+          service_interest: data[0].service_interest || '',
+          source: data[0].source || 'direct',
+          potential_value: data[0].potential_value || 0,
+          assigned_to: data[0].assigned_to || '',
+          notes: data[0].notes || '',
+          status: data[0].status as LeadStatus, // Cast explícito
+          client_id: data[0].client_id || undefined,
+          vehicle_id: data[0].vehicle_id || undefined,
+          client: data[0].client,
+          vehicle: data[0].vehicle
+        };
+        
         setLeads(prevLeads => 
           prevLeads.map(lead => 
-            lead.id === leadId ? { 
-              ...lead, 
-              ...data[0],
-              client: data[0].client,
-              vehicle: data[0].vehicle
-            } : lead
+            lead.id === leadId ? formattedLead : lead
           )
         );
         
         toast.success('Lead associado com sucesso');
-        return data[0];
+        return formattedLead;
       }
     } catch (err: any) {
       console.error('Erro ao associar cliente/veículo ao lead:', err);
@@ -268,6 +287,7 @@ export const useLeads = () => {
         potential_value: data.potential_value || 0,
         assigned_to: data.assigned_to || '',
         notes: data.notes || '',
+        status: data.status as LeadStatus, // Cast explícito
         client_id: data.client_id || undefined,
         vehicle_id: data.vehicle_id || undefined
       };
