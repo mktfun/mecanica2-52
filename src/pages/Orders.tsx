@@ -1,12 +1,29 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import OrdersBentoGrid from '@/components/orders/OrdersBentoGrid';
+import { useOrders } from '@/hooks/useOrders';
+import { toast } from 'sonner';
 
 const Orders = () => {
   const navigate = useNavigate();
+  const { fetchOrders, isLoading, error } = useOrders();
+
+  // Buscar dados ao montar o componente
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  // Exibir erro se houver
+  useEffect(() => {
+    if (error) {
+      toast.error('Erro ao carregar ordens de serviço', {
+        description: error
+      });
+    }
+  }, [error]);
 
   const handleCreateOrder = () => {
     navigate('/orders/new');

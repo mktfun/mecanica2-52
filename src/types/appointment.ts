@@ -1,28 +1,25 @@
 
-export type AppointmentStatus = 'scheduled' | 'in-progress' | 'completed' | 'cancelled' | 'confirmed';
+export type AppointmentStatus = 'scheduled' | 'confirmed' | 'in-progress' | 'completed' | 'cancelled';
 
 export interface Appointment {
   id: string;
-  client_name: string;
-  client_id?: string;
-  phone: string;
-  email?: string;
-  vehicle_info: string;
-  vehicle_id?: string;
+  client_id: string;
+  vehicle_id: string;
+  lead_id?: string;
   service_type: string;
   service_description?: string;
   start_time: string;
   end_time: string;
   mechanic_name: string;
-  mechanic_id?: string;
   status: AppointmentStatus;
   notes?: string;
+  estimated_cost?: number;
+  organization_id?: string;
   created_at: string;
   updated_at: string;
-  estimated_cost?: number;
-  description?: string;
-  customer?: any; // Add customer property
-  vehicle?: any; // Add vehicle property
+  // Propriedades expandidas para relacionamentos
+  client?: any;
+  vehicle?: any;
 }
 
 export interface AppointmentFilter {

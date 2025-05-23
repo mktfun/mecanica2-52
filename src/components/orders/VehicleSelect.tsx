@@ -1,122 +1,149 @@
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { Vehicle } from '@/types/order';
+import { Check, ChevronsUpDown, PlusCircle, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
-import AddVehicleModal from './AddVehicleModal';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandSeparator,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { useVehicles, Vehicle } from '@/hooks/useVehicles';
+import { AddVehicleModal } from './AddVehicleModal';
 
 interface VehicleSelectProps {
-  selectedVehicle: Vehicle | null;
-  customerId?: string;
-  onSelect: (vehicle: Vehicle) => void;
+  clientId?: string;
+  value?: string;
+  onChange: (value: string | undefined, vehicle?: Vehicle) => void;
+  disabled?: boolean;
+  placeholder?: string;
 }
 
-const VehicleSelect = ({ selectedVehicle, customerId, onSelect }: VehicleSelectProps) => {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+const VehicleSelect = ({ 
+  clientId, 
+  value, 
+  onChange, 
+  disabled, 
+  placeholder = "Selecione um veículo..." 
+}: VehicleSelectProps) => {
+  const [open, setOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const { vehicles, isLoading, fetchVehicles } = useVehicles(clientId);
 
+  // Buscar veículos quando o componente montar ou quando o clientId mudar
   useEffect(() => {
-    const fetchVehicles = () => {
-      try {
-        const vehiclesJSON = localStorage.getItem('mecanicapro_vehicles');
-        if (vehiclesJSON) {
-          const allVehicles = JSON.parse(vehiclesJSON);
-          
-          // If customerId is provided, filter vehicles by customer
-          if (customerId) {
-            const filteredVehicles = allVehicles.filter((vehicle: Vehicle) => vehicle.customerId === customerId);
-            setVehicles(filteredVehicles);
-          } else {
-            setVehicles(allVehicles);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching vehicles:", error);
-      }
-    };
-
-    fetchVehicles();
-  }, [customerId]);
+    if (clientId) {
+      fetchVehicles();
+    }
+  }, [clientId, fetchVehicles]);
 
   const handleSelect = (vehicleId: string) => {
-    const selected = vehicles.find(v => v.id === vehicleId);
-    if (selected) {
-      onSelect(selected);
-    }
+    const selectedVehicle = vehicles.find(vehicle => vehicle.id === vehicleId);
+    onChange(vehicleId, selectedVehicle);
+    setOpen(false);
+  };
+
+  const handleAddNewClick = () => {
+    setIsAddModalOpen(true);
+    setOpen(false);
   };
 
   const handleVehicleAdded = (newVehicle: Vehicle) => {
-    // Only add to the list if it belongs to the current customer
-    if (!customerId || newVehicle.customerId === customerId) {
-      setVehicles(prev => [...prev, newVehicle]);
-      onSelect(newVehicle);
-    }
+    handleSelect(newVehicle.id);
     setIsAddModalOpen(false);
   };
 
   return (
-    <div>
-      <div className="flex space-x-2">
-        <Select 
-          value={selectedVehicle?.id} 
-          onValueChange={handleSelect}
-          disabled={!customerId}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue 
-              placeholder={customerId ? "Selecione um veículo" : "Selecione um cliente primeiro"} 
-              className="placeholder:text-gray-400"
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {!customerId ? (
-              <div className="p-2 text-sm text-gray-500">Selecione um cliente primeiro</div>
-            ) : vehicles.length === 0 ? (
-              <div className="p-2 text-sm text-gray-500">Nenhum veículo encontrado para este cliente</div>
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between"
+            disabled={disabled || !clientId}
+          >
+            {value && vehicles.length > 0
+              ? vehicles.find((vehicle) => vehicle.id === value)
+                ? `${vehicles.find((vehicle) => vehicle.id === value)?.make} ${vehicles.find((vehicle) => vehicle.id === value)?.model} (${vehicles.find((vehicle) => vehicle.id === value)?.plate})`
+                : "Veículo não encontrado"
+              : !clientId ? "Selecione um cliente primeiro" : placeholder}
+            {isLoading ? (
+              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
             ) : (
-              vehicles.map((vehicle) => (
-                <SelectItem key={vehicle.id} value={vehicle.id}>
-                  {vehicle.model} - {vehicle.plate}
-                </SelectItem>
-              ))
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             )}
-          </SelectContent>
-        </Select>
-        
-        <Button 
-          type="button"
-          variant="outline"
-          onClick={() => setIsAddModalOpen(true)}
-          disabled={!customerId}
-          className="shrink-0"
-        >
-          <PlusCircle className="h-4 w-4" />
-        </Button>
-      </div>
-      
-      {selectedVehicle && (
-        <div className="mt-2 text-sm text-gray-600">
-          <div><span className="font-medium">Modelo:</span> {selectedVehicle.make} {selectedVehicle.model}</div>
-          <div><span className="font-medium">Placa:</span> {selectedVehicle.plate}</div>
-          {selectedVehicle.year && <div><span className="font-medium">Ano:</span> {selectedVehicle.year}</div>}
-          {selectedVehicle.color && <div><span className="font-medium">Cor:</span> {selectedVehicle.color}</div>}
-        </div>
-      )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[300px] p-0">
+          <Command>
+            <CommandInput placeholder="Buscar veículo..." />
+            <CommandEmpty>
+              {isLoading ? (
+                <div className="flex items-center justify-center p-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : !clientId ? (
+                "Selecione um cliente primeiro."
+              ) : (
+                "Nenhum veículo encontrado."
+              )}
+            </CommandEmpty>
+            <CommandGroup>
+              {!isLoading && clientId && vehicles.map((vehicle) => (
+                <CommandItem
+                  key={vehicle.id}
+                  value={vehicle.id}
+                  onSelect={() => handleSelect(vehicle.id)}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value === vehicle.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <div className="flex flex-col">
+                    <span>{vehicle.make} {vehicle.model} {vehicle.year && `(${vehicle.year})`}</span>
+                    <span className="text-xs text-muted-foreground">
+                      Placa: {vehicle.plate} {vehicle.color && `| Cor: ${vehicle.color}`}
+                    </span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            {clientId && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem onSelect={handleAddNewClick} disabled={!clientId}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    <span>Adicionar novo veículo</span>
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
+          </Command>
+        </PopoverContent>
+      </Popover>
 
-      <AddVehicleModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onVehicleAdded={handleVehicleAdded}
-        preSelectedCustomerId={customerId}
-      />
-    </div>
+      {clientId && (
+        <AddVehicleModal 
+          open={isAddModalOpen} 
+          onOpenChange={setIsAddModalOpen} 
+          clientId={clientId}
+          onVehicleAdded={handleVehicleAdded} 
+        />
+      )}
+    </>
   );
 };
 

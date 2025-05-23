@@ -1,24 +1,31 @@
 
 import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Customer } from '@/types/order';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter 
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useClients, Client } from '@/hooks/useClients';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 interface AddCustomerModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onCustomerAdded: (customer: Customer) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onClientAdded?: (client: Client) => void;
 }
 
-const AddCustomerModal = ({ isOpen, onClose, onCustomerAdded }: AddCustomerModalProps) => {
+export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
+  open,
+  onOpenChange,
+  onClientAdded
+}) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -26,48 +33,36 @@ const AddCustomerModal = ({ isOpen, onClose, onCustomerAdded }: AddCustomerModal
     address: '',
     city: '',
     state: '',
-    postalCode: '',
+    postal_code: '',
     notes: ''
   });
-  const [saving, setSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { addClient } = useClients();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!formData.name.trim()) {
-      alert('Nome é obrigatório');
+      toast.error('O nome do cliente é obrigatório');
       return;
     }
-
-    setSaving(true);
+    
+    setIsSubmitting(true);
     
     try {
-      // Create new customer
-      const newCustomer: Customer = {
-        id: `customer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name: formData.name.trim(),
-        email: formData.email.trim() || undefined,
-        phone: formData.phone.trim() || undefined,
-        address: formData.address.trim() || undefined,
-        city: formData.city.trim() || undefined,
-        state: formData.state.trim() || undefined,
-        postalCode: formData.postalCode.trim() || undefined,
-        notes: formData.notes.trim() || undefined,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      // Save to localStorage
-      const existingCustomers = JSON.parse(localStorage.getItem('mecanicapro_customers') || '[]');
-      existingCustomers.push(newCustomer);
-      localStorage.setItem('mecanicapro_customers', JSON.stringify(existingCustomers));
-
-      onCustomerAdded(newCustomer);
+      const newClient = await addClient(formData);
+      if (onClientAdded && newClient) {
+        onClientAdded(newClient);
+      } else {
+        onOpenChange(false);
+      }
       
-      // Reset form
+      // Limpar o formulário
       setFormData({
         name: '',
         email: '',
@@ -75,42 +70,28 @@ const AddCustomerModal = ({ isOpen, onClose, onCustomerAdded }: AddCustomerModal
         address: '',
         city: '',
         state: '',
-        postalCode: '',
+        postal_code: '',
         notes: ''
       });
     } catch (error) {
-      console.error('Erro ao salvar cliente:', error);
-      alert('Erro ao salvar cliente');
+      console.error('Erro ao adicionar cliente:', error);
+      toast.error('Não foi possível adicionar o cliente. Tente novamente.');
     } finally {
-      setSaving(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleClose = () => {
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      postalCode: '',
-      notes: ''
-    });
-    onClose();
-  };
-
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Adicionar Novo Cliente</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="name">Nome Completo *</Label>
-            <Input
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Nome *</Label>
+            <Input 
               id="name"
               name="name"
               value={formData.name}
@@ -119,47 +100,47 @@ const AddCustomerModal = ({ isOpen, onClose, onCustomerAdded }: AddCustomerModal
               required
             />
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="phone">Telefone</Label>
-              <Input
+              <Input 
                 id="phone"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                placeholder="(11) 99999-9999"
+                placeholder="(00) 00000-0000"
               />
             </div>
             
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
+              <Input 
                 id="email"
                 name="email"
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="cliente@email.com"
+                placeholder="email@exemplo.com"
               />
             </div>
           </div>
-
-          <div>
+          
+          <div className="space-y-2">
             <Label htmlFor="address">Endereço</Label>
-            <Input
+            <Input 
               id="address"
               name="address"
               value={formData.address}
               onChange={handleChange}
-              placeholder="Rua, número, bairro"
+              placeholder="Endereço completo"
             />
           </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            <div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="city">Cidade</Label>
-              <Input
+              <Input 
                 id="city"
                 name="city"
                 value={formData.city}
@@ -168,54 +149,58 @@ const AddCustomerModal = ({ isOpen, onClose, onCustomerAdded }: AddCustomerModal
               />
             </div>
             
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="state">Estado</Label>
-              <Input
+              <Input 
                 id="state"
                 name="state"
                 value={formData.state}
                 onChange={handleChange}
-                placeholder="SP"
-                maxLength={2}
+                placeholder="Estado"
               />
             </div>
             
-            <div>
-              <Label htmlFor="postalCode">CEP</Label>
-              <Input
-                id="postalCode"
-                name="postalCode"
-                value={formData.postalCode}
+            <div className="space-y-2">
+              <Label htmlFor="postal_code">CEP</Label>
+              <Input 
+                id="postal_code"
+                name="postal_code"
+                value={formData.postal_code}
                 onChange={handleChange}
                 placeholder="00000-000"
               />
             </div>
           </div>
-
-          <div>
+          
+          <div className="space-y-2">
             <Label htmlFor="notes">Observações</Label>
-            <Textarea
+            <Textarea 
               id="notes"
               name="notes"
               value={formData.notes}
               onChange={handleChange}
-              placeholder="Observações sobre o cliente"
+              placeholder="Informações adicionais sobre o cliente"
               rows={3}
             />
           </div>
-        </div>
-
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button variant="outline" onClick={handleClose} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Salvando...' : 'Salvar Cliente'}
-          </Button>
-        </div>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                'Salvar Cliente'
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
 };
-
-export default AddCustomerModal;

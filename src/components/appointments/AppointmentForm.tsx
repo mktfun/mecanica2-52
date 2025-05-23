@@ -20,10 +20,20 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Appointment, AppointmentStatus } from '@/types/appointment';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Appointment } from '@/types/appointment';
 import { Lead } from '@/types/lead';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, User } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
+import CustomerSelect from "@/components/orders/CustomerSelect";
+import VehicleSelect from "@/components/orders/VehicleSelect";
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface AppointmentFormProps {
   initialData?: Partial<Appointment>;
@@ -41,21 +51,19 @@ export function AppointmentForm({
   leads = []
 }: AppointmentFormProps) {
   const [formData, setFormData] = useState<Partial<Appointment>>({
-    client_name: '',
-    phone: '',
-    email: '',
-    vehicle_info: '',
     service_type: '',
     service_description: '',
     start_time: '',
     end_time: '',
     mechanic_name: '',
-    status: 'scheduled' as AppointmentStatus,
+    status: 'scheduled',
     notes: '',
     estimated_cost: 0
   });
   
   const [selectedLeadId, setSelectedLeadId] = useState<string>('none');
+  const [clientId, setClientId] = useState<string | undefined>(undefined);
+  const [vehicleId, setVehicleId] = useState<string | undefined>(undefined);
   const [startDate, setStartDate] = useState<Date | undefined>(
     initialData?.start_time ? new Date(initialData.start_time) : undefined
   );
@@ -67,6 +75,34 @@ export function AppointmentForm({
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('09:00');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [userOrganizationId, setUserOrganizationId] = useState<string | null>(null);
+
+  // Buscar a organização do usuário
+  useEffect(() => {
+    const fetchUserOrganization = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: memberships, error } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Erro ao buscar organização:', error);
+          return;
+        }
+
+        setUserOrganizationId(memberships?.organization_id || null);
+      } catch (err) {
+        console.error('Erro ao buscar usuário ou organização:', err);
+      }
+    };
+
+    fetchUserOrganization();
+  }, []);
 
   // Inicializar dados do formulário com os dados iniciais
   useEffect(() => {
@@ -86,6 +122,14 @@ export function AppointmentForm({
         const end = new Date(initialData.end_time);
         setEndDate(end);
         setEndTime(format(end, 'HH:mm'));
+      }
+      
+      if (initialData.client_id) {
+        setClientId(initialData.client_id);
+      }
+      
+      if (initialData.vehicle_id) {
+        setVehicleId(initialData.vehicle_id);
       }
     }
   }, [initialData]);
@@ -122,33 +166,141 @@ export function AppointmentForm({
     }
   }, [startDate, endDate]);
 
+  // Verificar se lead tem cliente ou veículo associado, caso contrário criar novos
+  const processSelectedLead = async (lead: Lead) => {
+    try {
+      // Se o lead já tem cliente associado
+      if (lead.client_id) {
+        setClientId(lead.client_id);
+        
+        // Se também tem veículo associado
+        if (lead.vehicle_id) {
+          setVehicleId(lead.vehicle_id);
+        }
+        
+        return;
+      }
+      
+      // Caso não tenha cliente associado, criar um novo cliente
+      if (!userOrganizationId) {
+        toast.error('Usuário não pertence a nenhuma organização');
+        return;
+      }
+      
+      // Criar um novo cliente baseado nos dados do lead
+      const { data: client, error: clientError } = await supabase
+        .from('clients')
+        .insert([{
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone,
+          organization_id: userOrganizationId
+        }])
+        .select()
+        .single();
+      
+      if (clientError) {
+        console.error('Erro ao criar cliente a partir do lead:', clientError);
+        toast.error('Erro ao criar cliente para o lead');
+        return;
+      }
+      
+      // Atualizar lead com o novo client_id
+      const { error: updateLeadError } = await supabase
+        .from('leads')
+        .update({ client_id: client.id })
+        .eq('id', lead.id);
+      
+      if (updateLeadError) {
+        console.error('Erro ao atualizar lead com clientId:', updateLeadError);
+      }
+      
+      // Setar o client_id para o formulário
+      setClientId(client.id);
+      
+      // Verificar se o lead tem informações de veículo e criar
+      if (lead.vehicle_brand || lead.vehicle_model || lead.vehicle_year) {
+        const { data: vehicle, error: vehicleError } = await supabase
+          .from('vehicles')
+          .insert([{
+            client_id: client.id,
+            make: lead.vehicle_brand || 'Não especificado',
+            model: lead.vehicle_model || 'Não especificado',
+            year: lead.vehicle_year,
+            plate: 'A definir', // Placeholder necessário pois o campo é obrigatório
+            organization_id: userOrganizationId
+          }])
+          .select()
+          .single();
+        
+        if (vehicleError) {
+          console.error('Erro ao criar veículo a partir do lead:', vehicleError);
+          toast.error('Erro ao criar veículo para o lead');
+          return;
+        }
+        
+        // Atualizar lead com o novo vehicle_id
+        const { error: updateLeadVehicleError } = await supabase
+          .from('leads')
+          .update({ vehicle_id: vehicle.id })
+          .eq('id', lead.id);
+        
+        if (updateLeadVehicleError) {
+          console.error('Erro ao atualizar lead com vehicleId:', updateLeadVehicleError);
+        }
+        
+        // Setar o vehicle_id para o formulário
+        setVehicleId(vehicle.id);
+      }
+    } catch (error) {
+      console.error('Erro ao processar lead:', error);
+      toast.error('Erro ao processar informações do lead');
+    }
+  };
+
   // Preencher dados do formulário quando um lead for selecionado
-  const handleLeadSelect = (leadId: string) => {
+  const handleLeadSelect = async (leadId: string) => {
     setSelectedLeadId(leadId);
     
     if (leadId === 'none') {
-      // Limpar campos relacionados ao cliente
+      // Limpar os seletores de cliente e veículo
+      setClientId(undefined);
+      setVehicleId(undefined);
       setFormData(prev => ({
         ...prev,
-        client_name: '',
-        phone: '',
-        email: '',
-        vehicle_info: ''
+        service_type: '',
+        service_description: '',
+        lead_id: undefined
       }));
       return;
     }
     
-    const selectedLead = leads.find(lead => lead.id === leadId);
-    
-    if (selectedLead) {
+    try {
+      // Buscar o lead selecionado do Supabase
+      const { data: lead, error } = await supabase
+        .from('leads')
+        .select('*, client:client_id(*), vehicle:vehicle_id(*)')
+        .eq('id', leadId)
+        .single();
+      
+      if (error) {
+        console.error('Erro ao buscar lead:', error);
+        toast.error('Erro ao buscar informações do lead');
+        return;
+      }
+      
+      // Processar o lead para criar cliente/veículo se necessário
+      await processSelectedLead(lead);
+      
+      // Atualizar dados do formulário com informações do lead
       setFormData(prev => ({
         ...prev,
-        client_name: selectedLead.name,
-        phone: selectedLead.phone,
-        email: selectedLead.email,
-        vehicle_info: `${selectedLead.vehicle_brand} ${selectedLead.vehicle_model} (${selectedLead.vehicle_year})`,
-        service_type: selectedLead.service_interest || prev.service_type,
+        service_type: lead.service_interest || prev.service_type,
+        lead_id: lead.id
       }));
+    } catch (err) {
+      console.error('Erro ao processar seleção de lead:', err);
+      toast.error('Erro ao processar lead selecionado');
     }
   };
 
@@ -168,19 +320,68 @@ export function AppointmentForm({
     }
   };
 
+  const handleClientChange = (value: string | undefined) => {
+    setClientId(value);
+    if (value) {
+      setFormData(prev => ({
+        ...prev,
+        client_id: value
+      }));
+      
+      // Limpar veículo se o cliente mudar
+      setVehicleId(undefined);
+      setFormData(prev => ({
+        ...prev,
+        vehicle_id: undefined
+      }));
+      
+      if (errors.client_id) {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.client_id;
+          return newErrors;
+        });
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        client_id: undefined
+      }));
+    }
+  };
+
+  const handleVehicleChange = (value: string | undefined) => {
+    setVehicleId(value);
+    if (value) {
+      setFormData(prev => ({
+        ...prev,
+        vehicle_id: value
+      }));
+      
+      if (errors.vehicle_id) {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.vehicle_id;
+          return newErrors;
+        });
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        vehicle_id: undefined
+      }));
+    }
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.client_name?.trim()) {
-      newErrors.client_name = 'Nome do cliente é obrigatório';
+    if (!formData.client_id) {
+      newErrors.client_id = 'Cliente é obrigatório';
     }
     
-    if (!formData.phone?.trim()) {
-      newErrors.phone = 'Telefone é obrigatório';
-    }
-    
-    if (!formData.vehicle_info?.trim()) {
-      newErrors.vehicle_info = 'Informações do veículo são obrigatórias';
+    if (!formData.vehicle_id) {
+      newErrors.vehicle_id = 'Veículo é obrigatório';
     }
     
     if (!formData.service_type?.trim()) {
@@ -220,10 +421,21 @@ export function AppointmentForm({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (validateForm()) {
+      if (formData.lead_id && formData.status === 'scheduled') {
+        // Atualizar status do lead para 'scheduled'
+        try {
+          await supabase.from('leads')
+            .update({ status: 'scheduled', status_changed_at: new Date().toISOString() })
+            .eq('id', formData.lead_id);
+        } catch (err) {
+          console.error('Erro ao atualizar status do lead:', err);
+        }
+      }
+      
       onSubmit(formData);
     }
   };
@@ -240,268 +452,296 @@ export function AppointmentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Seleção de lead */}
-      {leads && leads.length > 0 && (
-        <div className="space-y-2 border-b pb-4">
-          <Label htmlFor="lead_select">Selecionar Lead</Label>
-          <Select 
-            value={selectedLeadId} 
-            onValueChange={handleLeadSelect}
-          >
-            <SelectTrigger id="lead_select" className="w-full">
-              <SelectValue placeholder="Selecione um lead ou cliente existente" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Novo cliente</SelectItem>
-              {leads.map(lead => (
-                <SelectItem key={lead.id} value={lead.id}>
-                  {lead.name} - {lead.phone} - {lead.vehicle_brand} {lead.vehicle_model}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="client_name">Nome do Cliente</Label>
-          <Input
-            id="client_name"
-            value={formData.client_name || ''}
-            onChange={(e) => handleInputChange('client_name', e.target.value)}
-            placeholder="Nome do cliente"
-            className={errors.client_name ? 'border-red-500' : ''}
-          />
-          {errors.client_name && <p className="text-xs text-red-500">{errors.client_name}</p>}
-        </div>
+      <Accordion type="single" collapsible className="w-full" defaultValue="cliente-veiculo">
+        {/* Seção de Cliente e Veículo */}
+        <AccordionItem value="cliente-veiculo">
+          <AccordionTrigger className="text-lg font-medium">
+            Cliente e Veículo
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-4">
+              {/* Seleção de lead */}
+              {leads && leads.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  <Label>Selecionar Lead</Label>
+                  <Select 
+                    value={selectedLeadId} 
+                    onValueChange={handleLeadSelect}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione um lead (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem lead</SelectItem>
+                      {leads.map(lead => (
+                        <SelectItem key={lead.id} value={lead.id}>
+                          {lead.name} - {lead.phone} - {lead.vehicle_brand ? `${lead.vehicle_brand} ${lead.vehicle_model}` : "Sem veículo"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="client" className={errors.client_id ? 'text-red-500' : ''}>
+                  Cliente *
+                </Label>
+                <CustomerSelect 
+                  value={clientId} 
+                  onChange={handleClientChange}
+                />
+                {errors.client_id && <p className="text-xs text-red-500">{errors.client_id}</p>}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="vehicle" className={errors.vehicle_id ? 'text-red-500' : ''}>
+                  Veículo *
+                </Label>
+                <VehicleSelect 
+                  clientId={clientId} 
+                  value={vehicleId} 
+                  onChange={handleVehicleChange}
+                  disabled={!clientId}
+                />
+                {errors.vehicle_id && <p className="text-xs text-red-500">{errors.vehicle_id}</p>}
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+        
+        {/* Seção de Detalhes do Serviço */}
+        <AccordionItem value="detalhes-servico">
+          <AccordionTrigger className="text-lg font-medium">
+            Detalhes do Serviço
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="service_type" className={errors.service_type ? 'text-red-500' : ''}>
+                  Tipo de Serviço *
+                </Label>
+                <Select
+                  value={formData.service_type || ''}
+                  onValueChange={(value) => handleInputChange('service_type', value)}
+                >
+                  <SelectTrigger className={errors.service_type ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Selecione o tipo de serviço" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="troca_oleo">Troca de Óleo</SelectItem>
+                    <SelectItem value="revisao">Revisão</SelectItem>
+                    <SelectItem value="alinhamento">Alinhamento</SelectItem>
+                    <SelectItem value="balanceamento">Balanceamento</SelectItem>
+                    <SelectItem value="freios">Freios</SelectItem>
+                    <SelectItem value="motor">Motor</SelectItem>
+                    <SelectItem value="eletrica">Elétrica</SelectItem>
+                    <SelectItem value="suspensao">Suspensão</SelectItem>
+                    <SelectItem value="outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.service_type && <p className="text-xs text-red-500">{errors.service_type}</p>}
+              </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="phone">Telefone</Label>
-          <Input
-            id="phone"
-            value={formData.phone || ''}
-            onChange={(e) => handleInputChange('phone', e.target.value)}
-            placeholder="(00) 00000-0000"
-            className={errors.phone ? 'border-red-500' : ''}
-          />
-          {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="mechanic_name" className={errors.mechanic_name ? 'text-red-500' : ''}>
+                  Mecânico *
+                </Label>
+                <Input
+                  id="mechanic_name"
+                  value={formData.mechanic_name || ''}
+                  onChange={(e) => handleInputChange('mechanic_name', e.target.value)}
+                  placeholder="Nome do mecânico"
+                  className={errors.mechanic_name ? 'border-red-500' : ''}
+                />
+                {errors.mechanic_name && <p className="text-xs text-red-500">{errors.mechanic_name}</p>}
+              </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            value={formData.email || ''}
-            onChange={(e) => handleInputChange('email', e.target.value)}
-            placeholder="email@exemplo.com"
-          />
-        </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="service_description">Descrição do Serviço</Label>
+                <Textarea
+                  id="service_description"
+                  value={formData.service_description || ''}
+                  onChange={(e) => handleInputChange('service_description', e.target.value)}
+                  placeholder="Detalhes sobre o serviço a ser realizado"
+                  rows={2}
+                />
+              </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="vehicle_info">Veículo</Label>
-          <Input
-            id="vehicle_info"
-            value={formData.vehicle_info || ''}
-            onChange={(e) => handleInputChange('vehicle_info', e.target.value)}
-            placeholder="Marca, modelo e ano"
-            className={errors.vehicle_info ? 'border-red-500' : ''}
-          />
-          {errors.vehicle_info && <p className="text-xs text-red-500">{errors.vehicle_info}</p>}
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status || 'scheduled'}
+                  onValueChange={(value) => handleInputChange('status', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Agendado</SelectItem>
+                    <SelectItem value="confirmed">Confirmado</SelectItem>
+                    <SelectItem value="in-progress">Em andamento</SelectItem>
+                    <SelectItem value="completed">Concluído</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="service_type">Tipo de Serviço</Label>
-          <Select
-            value={formData.service_type || ''}
-            onValueChange={(value) => handleInputChange('service_type', value)}
-          >
-            <SelectTrigger id="service_type" className={errors.service_type ? 'border-red-500' : ''}>
-              <SelectValue placeholder="Selecione o tipo de serviço" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="troca_oleo">Troca de Óleo</SelectItem>
-              <SelectItem value="revisao">Revisão</SelectItem>
-              <SelectItem value="alinhamento">Alinhamento</SelectItem>
-              <SelectItem value="balanceamento">Balanceamento</SelectItem>
-              <SelectItem value="freios">Freios</SelectItem>
-              <SelectItem value="motor">Motor</SelectItem>
-              <SelectItem value="eletrica">Elétrica</SelectItem>
-              <SelectItem value="suspensao">Suspensão</SelectItem>
-              <SelectItem value="outro">Outro</SelectItem>
-            </SelectContent>
-          </Select>
-          {errors.service_type && <p className="text-xs text-red-500">{errors.service_type}</p>}
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="estimated_cost">Valor Estimado</Label>
+                <Input
+                  id="estimated_cost"
+                  type="number"
+                  value={formData.estimated_cost || ''}
+                  onChange={(e) => handleInputChange('estimated_cost', parseFloat(e.target.value))}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+        
+        {/* Seção de Data e Hora */}
+        <AccordionItem value="data-hora">
+          <AccordionTrigger className="text-lg font-medium">
+            Data e Hora
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="start_date" className={errors.start_time ? 'text-red-500' : ''}>
+                  Data de Início *
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground",
+                        errors.start_time && "border-red-500"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PPP", { locale: ptBR }) : "Selecione uma data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={(date) => {
+                        setStartDate(date);
+                        if (date && (!endDate || endDate < date)) {
+                          setEndDate(date);
+                        }
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                {errors.start_time && <p className="text-xs text-red-500">{errors.start_time}</p>}
+              </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="mechanic_name">Mecânico</Label>
-          <Input
-            id="mechanic_name"
-            value={formData.mechanic_name || ''}
-            onChange={(e) => handleInputChange('mechanic_name', e.target.value)}
-            placeholder="Nome do mecânico"
-            className={errors.mechanic_name ? 'border-red-500' : ''}
-          />
-          {errors.mechanic_name && <p className="text-xs text-red-500">{errors.mechanic_name}</p>}
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="start_time" className={errors.start_time ? 'text-red-500' : ''}>
+                  Hora de Início *
+                </Label>
+                <Select
+                  value={startTime}
+                  onValueChange={setStartTime}
+                >
+                  <SelectTrigger className={errors.start_time ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Selecione um horário" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeOptions.map((time) => (
+                      <SelectItem key={time} value={time}>{time}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="start_date">Data de Início</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !startDate && "text-muted-foreground",
-                  errors.start_time && "border-red-500"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {startDate ? format(startDate, "PPP", { locale: ptBR }) : "Selecione uma data"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={startDate}
-                onSelect={(date) => {
-                  setStartDate(date);
-                  if (date && (!endDate || endDate < date)) {
-                    setEndDate(date);
-                  }
-                }}
-                initialFocus
+              <div className="space-y-2">
+                <Label htmlFor="end_date" className={errors.end_time ? 'text-red-500' : ''}>
+                  Data de Término *
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !endDate && "text-muted-foreground",
+                        errors.end_time && "border-red-500"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "PPP", { locale: ptBR }) : "Selecione uma data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      disabled={(date) => (startDate ? date < startDate : false)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                {errors.end_time && <p className="text-xs text-red-500">{errors.end_time}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="end_time" className={errors.end_time ? 'text-red-500' : ''}>
+                  Hora de Término *
+                </Label>
+                <Select
+                  value={endTime}
+                  onValueChange={setEndTime}
+                >
+                  <SelectTrigger className={errors.end_time ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Selecione um horário" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeOptions.map((time) => (
+                      <SelectItem key={time} value={time}>{time}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+        
+        {/* Seção de Observações */}
+        <AccordionItem value="observacoes">
+          <AccordionTrigger className="text-lg font-medium">
+            Observações
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Observações</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes || ''}
+                onChange={(e) => handleInputChange('notes', e.target.value)}
+                placeholder="Observações adicionais"
+                rows={3}
               />
-            </PopoverContent>
-          </Popover>
-          {errors.start_time && <p className="text-xs text-red-500">{errors.start_time}</p>}
-        </div>
+            </div>
+            
+            {errors.time_conflict && (
+              <div className="mt-4">
+                <p className="text-sm bg-red-100 text-red-800 p-2 rounded">{errors.time_conflict}</p>
+              </div>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
-        <div className="space-y-2">
-          <Label htmlFor="start_time">Hora de Início</Label>
-          <Select
-            value={startTime}
-            onValueChange={setStartTime}
-          >
-            <SelectTrigger id="start_time" className={errors.start_time ? 'border-red-500' : ''}>
-              <SelectValue placeholder="Selecione um horário" />
-            </SelectTrigger>
-            <SelectContent>
-              {timeOptions.map((time) => (
-                <SelectItem key={time} value={time}>{time}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="end_date">Data de Término</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !endDate && "text-muted-foreground",
-                  errors.end_time && "border-red-500"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {endDate ? format(endDate, "PPP", { locale: ptBR }) : "Selecione uma data"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={endDate}
-                onSelect={setEndDate}
-                disabled={(date) => (startDate ? date < startDate : false)}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-          {errors.end_time && <p className="text-xs text-red-500">{errors.end_time}</p>}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="end_time">Hora de Término</Label>
-          <Select
-            value={endTime}
-            onValueChange={setEndTime}
-          >
-            <SelectTrigger id="end_time" className={errors.end_time ? 'border-red-500' : ''}>
-              <SelectValue placeholder="Selecione um horário" />
-            </SelectTrigger>
-            <SelectContent>
-              {timeOptions.map((time) => (
-                <SelectItem key={time} value={time}>{time}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="status">Status</Label>
-          <Select
-            value={formData.status || 'scheduled'}
-            onValueChange={(value) => handleInputChange('status', value)}
-          >
-            <SelectTrigger id="status">
-              <SelectValue placeholder="Selecione o status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="scheduled">Agendado</SelectItem>
-              <SelectItem value="in-progress">Em andamento</SelectItem>
-              <SelectItem value="completed">Concluído</SelectItem>
-              <SelectItem value="cancelled">Cancelado</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="estimated_cost">Valor Estimado</Label>
-          <Input
-            id="estimated_cost"
-            type="number"
-            value={formData.estimated_cost || ''}
-            onChange={(e) => handleInputChange('estimated_cost', parseFloat(e.target.value))}
-            placeholder="0.00"
-          />
-        </div>
-
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="service_description">Descrição do Serviço</Label>
-          <Textarea
-            id="service_description"
-            value={formData.service_description || ''}
-            onChange={(e) => handleInputChange('service_description', e.target.value)}
-            placeholder="Detalhes sobre o serviço a ser realizado"
-            rows={2}
-          />
-        </div>
-
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="notes">Observações</Label>
-          <Textarea
-            id="notes"
-            value={formData.notes || ''}
-            onChange={(e) => handleInputChange('notes', e.target.value)}
-            placeholder="Observações adicionais"
-            rows={3}
-          />
-        </div>
-
-        {errors.time_conflict && (
-          <div className="md:col-span-2">
-            <p className="text-sm bg-red-100 text-red-800 p-2 rounded">{errors.time_conflict}</p>
-          </div>
-        )}
-      </div>
-
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end gap-3 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancelar
         </Button>

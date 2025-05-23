@@ -1,103 +1,129 @@
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { Customer } from '@/types/order';
+import { Check, ChevronsUpDown, PlusCircle, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
-import AddCustomerModal from './AddCustomerModal';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandSeparator,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { useClients, Client } from '@/hooks/useClients';
+import { AddCustomerModal } from './AddCustomerModal';
 
 interface CustomerSelectProps {
-  selectedCustomer: Customer | null;
-  onSelect: (customer: Customer) => void;
+  value?: string;
+  onChange: (value: string | undefined, client?: Client) => void;
+  disabled?: boolean;
+  placeholder?: string;
 }
 
-const CustomerSelect = ({ selectedCustomer, onSelect }: CustomerSelectProps) => {
-  const [customers, setCustomers] = useState<Customer[]>([]);
+const CustomerSelect = ({ value, onChange, disabled, placeholder = "Selecione um cliente..." }: CustomerSelectProps) => {
+  const [open, setOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const { clients, isLoading, fetchClients } = useClients();
 
+  // Buscar cliente selecionado quando o componente montar ou quando o valor mudar
   useEffect(() => {
-    const fetchCustomers = () => {
-      try {
-        const customersJSON = localStorage.getItem('mecanicapro_customers');
-        if (customersJSON) {
-          setCustomers(JSON.parse(customersJSON));
-        }
-      } catch (error) {
-        console.error("Error fetching customers:", error);
-      }
-    };
+    fetchClients();
+  }, [fetchClients]);
 
-    fetchCustomers();
-  }, []);
-
-  const handleSelect = (customerId: string) => {
-    const selected = customers.find(c => c.id === customerId);
-    if (selected) {
-      onSelect(selected);
-    }
+  const handleSelect = (clientId: string) => {
+    const selectedClient = clients.find(client => client.id === clientId);
+    onChange(clientId, selectedClient);
+    setOpen(false);
   };
 
-  const handleCustomerAdded = (newCustomer: Customer) => {
-    setCustomers(prev => [...prev, newCustomer]);
-    onSelect(newCustomer);
+  const handleAddNewClick = () => {
+    setIsAddModalOpen(true);
+    setOpen(false);
+  };
+
+  const handleCustomerAdded = (newClient: Client) => {
+    handleSelect(newClient.id);
     setIsAddModalOpen(false);
   };
 
   return (
-    <div>
-      <div className="flex space-x-2">
-        <Select 
-          value={selectedCustomer?.id} 
-          onValueChange={handleSelect}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue 
-              placeholder="Selecione um cliente" 
-              className="placeholder:text-gray-400"
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {customers.length === 0 ? (
-              <div className="p-2 text-sm text-gray-500">Nenhum cliente encontrado</div>
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between"
+            disabled={disabled}
+          >
+            {value && clients.length > 0
+              ? clients.find((client) => client.id === value)?.name || "Cliente não encontrado"
+              : placeholder}
+            {isLoading ? (
+              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
             ) : (
-              customers.map((customer) => (
-                <SelectItem key={customer.id} value={customer.id}>
-                  {customer.name}
-                </SelectItem>
-              ))
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             )}
-          </SelectContent>
-        </Select>
-        
-        <Button 
-          type="button"
-          variant="outline"
-          onClick={() => setIsAddModalOpen(true)}
-          className="shrink-0"
-        >
-          <PlusCircle className="h-4 w-4" />
-        </Button>
-      </div>
-      
-      {selectedCustomer && (
-        <div className="mt-2 text-sm text-gray-600">
-          {selectedCustomer.phone && <div>{selectedCustomer.phone}</div>}
-          {selectedCustomer.email && <div>{selectedCustomer.email}</div>}
-        </div>
-      )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[300px] p-0">
+          <Command>
+            <CommandInput placeholder="Buscar cliente..." />
+            <CommandEmpty>
+              {isLoading ? (
+                <div className="flex items-center justify-center p-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                "Nenhum cliente encontrado."
+              )}
+            </CommandEmpty>
+            <CommandGroup>
+              {!isLoading && clients.map((client) => (
+                <CommandItem
+                  key={client.id}
+                  value={client.id}
+                  onSelect={() => handleSelect(client.id)}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value === client.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <div className="flex flex-col">
+                    <span>{client.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {client.phone} {client.email ? ` | ${client.email}` : ""}
+                    </span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup>
+              <CommandItem onSelect={handleAddNewClick}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                <span>Adicionar novo cliente</span>
+              </CommandItem>
+            </CommandGroup>
+          </Command>
+        </PopoverContent>
+      </Popover>
 
-      <AddCustomerModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onCustomerAdded={handleCustomerAdded}
+      <AddCustomerModal 
+        open={isAddModalOpen} 
+        onOpenChange={setIsAddModalOpen} 
+        onClientAdded={handleCustomerAdded} 
       />
-    </div>
+    </>
   );
 };
 

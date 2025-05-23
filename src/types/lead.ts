@@ -4,9 +4,6 @@ export interface Lead {
   name: string;
   email: string;
   phone: string;
-  vehicle_brand: string;
-  vehicle_model: string;
-  vehicle_year: string;
   service_interest: string;
   source: string;
   potential_value: number;
@@ -17,10 +14,20 @@ export interface Lead {
   updated_at: string;
   status_changed_at: string;
   last_interaction_at: string;
-  organization_id?: string; // Campo adicionado para suporte a multi-tenant
+  organization_id?: string;
+  client_id?: string;
+  vehicle_id?: string;
+  
+  // Propriedades mantidas para compatibilidade, mas que não são mais usadas diretamente
+  vehicle_brand: string;
+  vehicle_model: string;
+  vehicle_year: string;
+  
+  // Dados expandidos de relacionamentos
+  client?: any;
+  vehicle?: any;
 }
 
-// Make sure this is properly defined and exported
 export type LeadStatus = 'new' | 'contacted' | 'negotiation' | 'scheduled' | 'converted' | 'lost';
 
 export interface LeadHistory {

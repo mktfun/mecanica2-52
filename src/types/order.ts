@@ -4,21 +4,25 @@ import { Lead } from "./lead";
 
 // Customer type
 export interface Customer extends BaseEntity {
+  id: string;
+  organization_id?: string;
   name: string;
   email?: string;
   phone?: string;
   address?: string;
   city?: string;
   state?: string;
-  postalCode?: string;
+  postal_code?: string;
   notes?: string;
-  leadSource?: string;
-  lead?: Lead;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Vehicle type
 export interface Vehicle extends BaseEntity {
-  customerId: string;
+  id: string;
+  organization_id?: string;
+  client_id: string;
   make: string;
   model: string;
   year?: string;
@@ -27,53 +31,72 @@ export interface Vehicle extends BaseEntity {
   vin?: string;
   mileage?: number;
   notes?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-// Service type
+// ServiceType type
 export interface ServiceType extends BaseEntity {
+  id: string;
+  organization_id?: string;
   name: string;
   description?: string;
   price: number;
-  estimatedTime?: number;
+  estimated_time?: number;
   category?: string;
+  active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // OrderService type (service in an order)
 export interface OrderService {
   id: string;
+  service_order_id: string;
+  service_id?: string;
   name: string;
   description?: string;
   price: number;
   quantity: number;
   completed: boolean;
+  created_at: string;
 }
 
 // Part type
 export interface Part extends BaseEntity {
+  id: string;
+  organization_id?: string;
   name: string;
   code?: string;
   description?: string;
   price: number;
   category?: string;
   stock?: number;
-  minimumStock?: number;
+  minimum_stock?: number;
+  active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // OrderPart type (part in an order)
 export interface OrderPart {
   id: string;
+  service_order_id: string;
+  part_id?: string;
   name: string;
   code?: string;
   price: number;
   quantity: number;
+  created_at: string;
 }
 
 // Photo type for order
 export interface OrderPhoto {
   id: string;
+  service_order_id: string;
   url: string;
   description?: string;
-  added_at: string;
+  created_at: string;
 }
 
 // Status history entry
@@ -84,44 +107,43 @@ export interface StatusHistoryEntry {
   notes?: string;
 }
 
-// Tax settings
-export interface TaxSettings {
-  name: string;
-  percentage: number;
-  applies_to: string[]; // 'services', 'parts', etc.
-}
-
-// Vehicle category
-export interface VehicleCategory extends BaseEntity {
-  name: string;
-  description?: string;
-}
-
 // Order status type
-export type OrderStatus = 'open' | 'in_progress' | 'completed' | 'canceled' | 'waiting_parts' | 'waiting_approval';
+export type OrderStatus = 'open' | 'in_progress' | 'waiting_parts' | 'waiting_approval' | 'completed' | 'cancelled';
 
 // Main Order interface
 export interface Order extends BaseEntity {
+  id: string;
   number: number;
-  customer: Customer;
-  vehicle: Vehicle;
+  organization_id: string;
+  client_id: string;
+  vehicle_id: string;
+  appointment_id?: string;
+  lead_id?: string;
   status: OrderStatus;
-  description: string;
-  services: OrderService[];
-  parts: OrderPart[];
-  laborCost: number;
-  discount: number;
-  tax: number;
-  subtotal: number;
-  discountAmount: number;
-  taxAmount: number;
-  total: number;
+  description?: string;
   technician?: string;
-  photos: OrderPhoto[];
+  labor_cost: number;
+  discount_percent: number;
+  tax_percent: number;
+  subtotal: number;
+  discount_amount: number;
+  tax_amount: number;
+  total: number;
   notes?: string;
   recommendations?: string;
-  appointmentId?: string;
-  statusHistory?: StatusHistoryEntry[];
-  estimatedCompletionDate?: string;
-  completedAt?: string;
+  estimated_completion_date?: string;
+  completed_at?: string;
+  created_at: string;
+  updated_at: string;
+  
+  // Relacionamentos expandidos
+  client?: Customer;
+  vehicle?: Vehicle;
+  appointment?: any;
+  lead?: Lead;
+  
+  // Arrays de serviços, peças e fotos
+  services: OrderService[];
+  parts: OrderPart[];
+  photos: OrderPhoto[];
 }

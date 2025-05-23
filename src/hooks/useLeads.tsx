@@ -53,7 +53,7 @@ export const useLeads = () => {
     try {
       const { data, error } = await supabase
         .from('leads')
-        .select('*')
+        .select('*, client:client_id(*), vehicle:vehicle_id(*)')
         .eq('organization_id', orgId)
         .order('created_at', { ascending: false });
 
@@ -61,26 +61,31 @@ export const useLeads = () => {
         throw error;
       }
 
-      // Mapear os dados do Supabase para o formato do Lead
+      // Mapear os dados para incluir os relacionamentos
       const formattedLeads: Lead[] = data.map(lead => ({
         id: lead.id,
         name: lead.name,
         email: lead.email || '',
         phone: lead.phone,
-        vehicle_brand: lead.vehicle_brand || '',
-        vehicle_model: lead.vehicle_model || '',
-        vehicle_year: lead.vehicle_year || '',
         service_interest: lead.service_interest || '',
         source: lead.source || 'direct',
         potential_value: lead.potential_value || 0,
         assigned_to: lead.assigned_to || '',
-        status: lead.status as LeadStatus, // Garantir que o status seja tratado como LeadStatus
+        status: lead.status as LeadStatus,
         notes: lead.notes || '',
         created_at: lead.created_at,
         updated_at: lead.updated_at,
         status_changed_at: lead.status_changed_at,
         last_interaction_at: lead.last_interaction_at,
-        organization_id: lead.organization_id
+        organization_id: lead.organization_id,
+        client_id: lead.client_id || undefined,
+        vehicle_id: lead.vehicle_id || undefined,
+        // Os dados expandidos de cliente e veículo
+        client: lead.client,
+        vehicle: lead.vehicle,
+        vehicle_brand: '', // Mantendo para compatibilidade, mas não mais usado
+        vehicle_model: '', // Mantendo para compatibilidade, mas não mais usado
+        vehicle_year: ''   // Mantendo para compatibilidade, mas não mais usado
       }));
 
       setLeads(formattedLeads);
@@ -112,7 +117,7 @@ export const useLeads = () => {
       const { data, error } = await supabase
         .from('leads')
         .insert([leadWithOrg])
-        .select();
+        .select('*, client:client_id(*), vehicle:vehicle_id(*)');
 
       if (error) {
         throw error;
@@ -125,20 +130,24 @@ export const useLeads = () => {
           name: data[0].name,
           email: data[0].email || '',
           phone: data[0].phone,
-          vehicle_brand: data[0].vehicle_brand || '',
-          vehicle_model: data[0].vehicle_model || '',
-          vehicle_year: data[0].vehicle_year || '',
           service_interest: data[0].service_interest || '',
           source: data[0].source || 'direct',
           potential_value: data[0].potential_value || 0,
           assigned_to: data[0].assigned_to || '',
-          status: data[0].status as LeadStatus, // Cast para LeadStatus
+          status: data[0].status as LeadStatus,
           notes: data[0].notes || '',
           created_at: data[0].created_at,
           updated_at: data[0].updated_at,
           status_changed_at: data[0].status_changed_at,
           last_interaction_at: data[0].last_interaction_at,
-          organization_id: data[0].organization_id
+          organization_id: data[0].organization_id,
+          client_id: data[0].client_id || undefined,
+          vehicle_id: data[0].vehicle_id || undefined,
+          client: data[0].client,
+          vehicle: data[0].vehicle,
+          vehicle_brand: '', // Mantendo para compatibilidade, mas não mais usado
+          vehicle_model: '', // Mantendo para compatibilidade, mas não mais usado
+          vehicle_year: ''   // Mantendo para compatibilidade, mas não mais usado
         };
         
         setLeads(prevLeads => [formattedLead, ...prevLeads]);
@@ -159,7 +168,7 @@ export const useLeads = () => {
         .from('leads')
         .update(updatedData)
         .eq('id', id)
-        .select();
+        .select('*, client:client_id(*), vehicle:vehicle_id(*)');
 
       if (error) {
         throw error;
@@ -171,8 +180,10 @@ export const useLeads = () => {
           prevLeads.map(lead => 
             lead.id === id ? { 
               ...lead, 
-              ...data[0], 
-              status: data[0].status as LeadStatus // Cast para LeadStatus
+              ...data[0],
+              status: data[0].status as LeadStatus,
+              client: data[0].client,
+              vehicle: data[0].vehicle
             } : lead
           )
         );
@@ -189,7 +200,90 @@ export const useLeads = () => {
 
   // Função específica para atualizar o status do lead (para drag-and-drop no Kanban)
   const updateLeadStatus = async (id: string, newStatus: string) => {
-    return updateLead(id, { status: newStatus as LeadStatus });
+    return updateLead(id, { 
+      status: newStatus as LeadStatus,
+      status_changed_at: new Date().toISOString(),
+      last_interaction_at: new Date().toISOString()
+    });
+  };
+
+  // Função para associar um cliente e/ou veículo a um lead
+  const associateClientVehicle = async (leadId: string, clientId?: string, vehicleId?: string) => {
+    try {
+      if (!clientId && !vehicleId) return;
+      
+      const updates: { client_id?: string, vehicle_id?: string } = {};
+      
+      if (clientId) updates.client_id = clientId;
+      if (vehicleId) updates.vehicle_id = vehicleId;
+      
+      const { data, error } = await supabase
+        .from('leads')
+        .update(updates)
+        .eq('id', leadId)
+        .select('*, client:client_id(*), vehicle:vehicle_id(*)');
+
+      if (error) {
+        throw error;
+      }
+
+      // Atualizar a lista de leads localmente
+      if (data && data[0]) {
+        setLeads(prevLeads => 
+          prevLeads.map(lead => 
+            lead.id === leadId ? { 
+              ...lead, 
+              ...data[0],
+              client: data[0].client,
+              vehicle: data[0].vehicle
+            } : lead
+          )
+        );
+        
+        toast.success('Lead associado com sucesso');
+        return data[0];
+      }
+    } catch (err: any) {
+      console.error('Erro ao associar cliente/veículo ao lead:', err);
+      toast.error('Erro ao associar cliente/veículo');
+      throw err;
+    }
+  };
+
+  // Obter lead por ID
+  const getLeadById = async (id: string): Promise<Lead | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*, client:client_id(*), vehicle:vehicle_id(*)')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') { // No rows found
+          return null;
+        }
+        throw error;
+      }
+
+      return {
+        ...data,
+        email: data.email || '',
+        service_interest: data.service_interest || '',
+        source: data.source || 'direct',
+        potential_value: data.potential_value || 0,
+        assigned_to: data.assigned_to || '',
+        notes: data.notes || '',
+        client_id: data.client_id || undefined,
+        vehicle_id: data.vehicle_id || undefined,
+        vehicle_brand: '', // Mantendo para compatibilidade, mas não mais usado
+        vehicle_model: '', // Mantendo para compatibilidade, mas não mais usado
+        vehicle_year: ''   // Mantendo para compatibilidade, mas não mais usado
+      };
+    } catch (err: any) {
+      console.error('Erro ao buscar lead por ID:', err);
+      return null;
+    }
   };
 
   // Inicializar o hook buscando a organização do usuário e então os leads
@@ -240,6 +334,8 @@ export const useLeads = () => {
     addLead,
     updateLead,
     updateLeadStatus,
+    associateClientVehicle,
+    getLeadById,
     userOrganizationId
   };
 };

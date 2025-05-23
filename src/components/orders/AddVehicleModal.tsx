@@ -1,34 +1,34 @@
 
-import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import React, { useState } from 'react';
 import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Vehicle, Customer } from '@/types/order';
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter 
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useVehicles, Vehicle } from '@/hooks/useVehicles';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 interface AddVehicleModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onVehicleAdded: (vehicle: Vehicle) => void;
-  preSelectedCustomerId?: string;
+  open: boolean;
+  clientId: string;
+  onOpenChange: (open: boolean) => void;
+  onVehicleAdded?: (vehicle: Vehicle) => void;
 }
 
-const AddVehicleModal = ({ isOpen, onClose, onVehicleAdded, preSelectedCustomerId }: AddVehicleModalProps) => {
+export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
+  open,
+  clientId,
+  onOpenChange,
+  onVehicleAdded
+}) => {
   const [formData, setFormData] = useState({
-    customerId: preSelectedCustomerId || '',
     make: '',
     model: '',
     year: '',
@@ -38,76 +38,59 @@ const AddVehicleModal = ({ isOpen, onClose, onVehicleAdded, preSelectedCustomerI
     mileage: '',
     notes: ''
   });
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    // Load customers for the dropdown
-    try {
-      const customersData = localStorage.getItem('mecanicapro_customers');
-      if (customersData) {
-        setCustomers(JSON.parse(customersData));
-      }
-    } catch (error) {
-      console.error('Erro ao carregar clientes:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (preSelectedCustomerId) {
-      setFormData(prev => ({ ...prev, customerId: preSelectedCustomerId }));
-    }
-  }, [preSelectedCustomerId]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { addVehicle } = useVehicles();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (value: string) => {
-    setFormData(prev => ({ ...prev, customerId: value }));
-  };
-
-  const handleSave = () => {
-    if (!formData.customerId) {
-      alert('Cliente é obrigatório');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.make.trim()) {
+      toast.error('A marca do veículo é obrigatória');
       return;
     }
     
-    if (!formData.make.trim() || !formData.model.trim() || !formData.plate.trim()) {
-      alert('Marca, Modelo e Placa são obrigatórios');
+    if (!formData.model.trim()) {
+      toast.error('O modelo do veículo é obrigatório');
       return;
     }
-
-    setSaving(true);
+    
+    if (!formData.plate.trim()) {
+      toast.error('A placa do veículo é obrigatória');
+      return;
+    }
+    
+    setIsSubmitting(true);
     
     try {
-      // Create new vehicle
-      const newVehicle: Vehicle = {
-        id: `vehicle-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        customerId: formData.customerId,
-        make: formData.make.trim(),
-        model: formData.model.trim(),
-        year: formData.year.trim() || undefined,
-        plate: formData.plate.trim().toUpperCase(),
-        color: formData.color.trim() || undefined,
-        vin: formData.vin.trim() || undefined,
-        mileage: formData.mileage ? Number(formData.mileage) : undefined,
-        notes: formData.notes.trim() || undefined,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      // Save to localStorage
-      const existingVehicles = JSON.parse(localStorage.getItem('mecanicapro_vehicles') || '[]');
-      existingVehicles.push(newVehicle);
-      localStorage.setItem('mecanicapro_vehicles', JSON.stringify(existingVehicles));
-
-      onVehicleAdded(newVehicle);
+      // Converter mileage para number se estiver preenchido
+      const mileage = formData.mileage ? parseInt(formData.mileage) : undefined;
       
-      // Reset form
+      const vehicleData = {
+        client_id: clientId,
+        make: formData.make,
+        model: formData.model,
+        year: formData.year || undefined,
+        plate: formData.plate,
+        color: formData.color || undefined,
+        vin: formData.vin || undefined,
+        mileage,
+        notes: formData.notes || undefined
+      };
+      
+      const newVehicle = await addVehicle(vehicleData);
+      if (onVehicleAdded && newVehicle) {
+        onVehicleAdded(newVehicle);
+      } else {
+        onOpenChange(false);
+      }
+      
+      // Limpar o formulário
       setFormData({
-        customerId: preSelectedCustomerId || '',
         make: '',
         model: '',
         year: '',
@@ -118,165 +101,137 @@ const AddVehicleModal = ({ isOpen, onClose, onVehicleAdded, preSelectedCustomerI
         notes: ''
       });
     } catch (error) {
-      console.error('Erro ao salvar veículo:', error);
-      alert('Erro ao salvar veículo');
+      console.error('Erro ao adicionar veículo:', error);
+      toast.error('Não foi possível adicionar o veículo. Tente novamente.');
     } finally {
-      setSaving(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleClose = () => {
-    setFormData({
-      customerId: preSelectedCustomerId || '',
-      make: '',
-      model: '',
-      year: '',
-      plate: '',
-      color: '',
-      vin: '',
-      mileage: '',
-      notes: ''
-    });
-    onClose();
-  };
-
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Adicionar Novo Veículo</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="customerId">Cliente Proprietário *</Label>
-            <Select value={formData.customerId} onValueChange={handleSelectChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {customers.map((customer) => (
-                  <SelectItem key={customer.id} value={customer.id}>
-                    {customer.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="make">Marca *</Label>
-              <Input
+              <Input 
                 id="make"
                 name="make"
                 value={formData.make}
                 onChange={handleChange}
-                placeholder="Toyota, Honda, etc."
+                placeholder="Ex: Toyota, Honda, etc."
                 required
               />
             </div>
             
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="model">Modelo *</Label>
-              <Input
+              <Input 
                 id="model"
                 name="model"
                 value={formData.model}
                 onChange={handleChange}
-                placeholder="Corolla, Civic, etc."
+                placeholder="Ex: Corolla, Civic, etc."
                 required
               />
             </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="year">Ano</Label>
-              <Input
+              <Input 
                 id="year"
                 name="year"
                 value={formData.year}
                 onChange={handleChange}
-                placeholder="2020"
-                maxLength={4}
+                placeholder="Ex: 2020"
               />
             </div>
             
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="plate">Placa *</Label>
-              <Input
+              <Input 
                 id="plate"
                 name="plate"
                 value={formData.plate}
                 onChange={handleChange}
-                placeholder="ABC-1234"
+                placeholder="Ex: ABC1234"
                 required
-                style={{ textTransform: 'uppercase' }}
               />
             </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="color">Cor</Label>
-              <Input
+              <Input 
                 id="color"
                 name="color"
                 value={formData.color}
                 onChange={handleChange}
-                placeholder="Branco, Preto, etc."
+                placeholder="Ex: Prata, Branco, etc."
               />
             </div>
             
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="mileage">Quilometragem</Label>
-              <Input
+              <Input 
                 id="mileage"
                 name="mileage"
                 type="number"
                 value={formData.mileage}
                 onChange={handleChange}
-                placeholder="50000"
+                placeholder="Ex: 45000"
               />
             </div>
           </div>
-
-          <div>
-            <Label htmlFor="vin">Chassi (VIN)</Label>
-            <Input
+          
+          <div className="space-y-2">
+            <Label htmlFor="vin">Número do Chassi (VIN)</Label>
+            <Input 
               id="vin"
               name="vin"
               value={formData.vin}
               onChange={handleChange}
-              placeholder="9BWZZZ377VT004251"
+              placeholder="Número de identificação do veículo"
             />
           </div>
-
-          <div>
+          
+          <div className="space-y-2">
             <Label htmlFor="notes">Observações</Label>
-            <Textarea
+            <Textarea 
               id="notes"
               name="notes"
               value={formData.notes}
               onChange={handleChange}
-              placeholder="Observações sobre o veículo"
+              placeholder="Informações adicionais sobre o veículo"
               rows={3}
             />
           </div>
-        </div>
-
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button variant="outline" onClick={handleClose} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Salvando...' : 'Salvar Veículo'}
-          </Button>
-        </div>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                'Salvar Veículo'
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
 };
-
-export default AddVehicleModal;
