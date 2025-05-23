@@ -154,33 +154,38 @@ export const useOrganizations = () => {
   // Adicionar membro à organização atual
   const addOrganizationMember = async (orgId: string, email: string, role: MemberRole) => {
     try {
-      // Buscar o usuário pelo e-mail (corrigindo a consulta)
-      const { data: userData, error: userError } = await supabase
-        .from('profiles') // Usamos profiles ao invés de users, assumindo que você tem uma tabela profiles que armazena emails
-        .select('id')
-        .eq('email', email)
-        .single();
-
-      if (userError) {
-        throw new Error('Usuário não encontrado');
-      }
-
-      // Adicionar como membro
+      // Esta função precisa ser reescrita para lidar com a realidade do Supabase
+      // Como não temos acesso direto à tabela auth.users via API, precisamos
+      // de uma abordagem diferente
+      
+      // Em um cenário real, recomenda-se:
+      // 1. Criar uma função RPC no Supabase para buscar um usuário por e-mail
+      // 2. Ou criar uma tabela profiles que mantém o email associado ao user_id
+      
+      // Por enquanto, como solução temporária:
+      toast.error('Funcionalidade ainda não implementada completamente');
+      console.error('Funcionalidade de adicionar membros requer implementação adicional');
+      
+      // Exemplo de como seria a lógica caso tivéssemos o user_id:
+      /*
+      const userId = '...'; // ID do usuário obtido de alguma forma
+      
       const { error } = await supabase
         .from('organization_members')
         .insert([{
           organization_id: orgId,
-          user_id: userData.id,
+          user_id: userId,
           role: role
         }]);
 
       if (error) {
         throw error;
       }
-
+      
       // Atualizar lista de membros
       fetchOrganizationMembers(orgId);
       toast.success('Membro adicionado com sucesso');
+      */
     } catch (err: any) {
       console.error('Erro ao adicionar membro:', err);
       toast.error('Erro ao adicionar membro');
