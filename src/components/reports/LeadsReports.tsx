@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { BentoGrid, BentoCard } from '@/components/ui/bento-grid';
 import { 
   BarChart, 
   Bar, 
@@ -17,8 +18,10 @@ import {
   LineChart,
   Line
 } from 'recharts';
+import { Users, ArrowUpRight, Clock, Filter, BarChart2, PieChart as PieChartIcon, Activity } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { KpiCardContent } from '../marketing/KpiCardContent';
 
 interface LeadsReportData {
   conversion: {
@@ -49,255 +52,303 @@ interface LeadsReportsProps {
   data: LeadsReportData;
 }
 
-const COLORS = ['#1890ff', '#52c41a', '#faad14', '#eb2f96', '#722ed1', '#2f54eb'];
-const STATUS_COLORS = {
-  'Novos Leads': '#1890ff',
-  'Primeiro Contato': '#faad14',
-  'Em Negociação': '#722ed1',
-  'Agendados': '#52c41a',
-  'Convertidos': '#eb2f96'
+// Custom tooltips for charts
+const FunnelTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const total = payload[0]?.payload?.total || 0;
+    const value = payload[0]?.value || 0;
+    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+    
+    return (
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">{label}</p>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm text-gray-700 dark:text-gray-300">Quantidade:</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {value}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-700 dark:text-gray-300">% do total:</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {percentage}%
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return null;
 };
 
-const LeadsReports: React.FC<LeadsReportsProps> = ({ data }) => {
-  // Dados para gráfico de conversão por fonte
-  const sourceData = data.bySource.map(item => ({
+const SourceTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="flex items-center justify-between mb-1">
+            <div className="flex items-center">
+              <div 
+                className="w-3 h-3 rounded-full mr-2" 
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">{entry.name}</span>
+            </div>
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              {entry.value}
+            </span>
+          </div>
+        ))}
+        {payload.length === 2 && (
+          <div className="mt-1 pt-1 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-700 dark:text-gray-300">Taxa de conversão:</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                {((payload[1].value / payload[0].value) * 100).toFixed(1)}%
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
+
+const EfficiencyTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">{label}</p>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm text-gray-700 dark:text-gray-300">Taxa de conversão:</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {payload[0].value.toFixed(1)}%
+          </span>
+        </div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm text-gray-700 dark:text-gray-300">Leads atribuídos:</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {payload[0].payload.total}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-700 dark:text-gray-300">Leads convertidos:</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {payload[0].payload.convertidos}
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+// Chart components
+const ConversionFunnelChart = ({ data }: { data: Array<{ stage: string; count: number }>, total: number }) => {
+  const chartData = data.map(item => ({
+    name: item.stage,
+    value: item.count,
+    total: data[0].count
+  }));
+  
+  const COLORS = {
+    'Novos Leads': '#bfdbfe',
+    'Primeiro Contato': '#fde68a',
+    'Em Negociação': '#c7d2fe',
+    'Agendados': '#a7f3d0',
+    'Convertidos': '#fbb6ce'
+  };
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart
+        data={chartData}
+        layout="vertical"
+        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+        <XAxis type="number" fontSize={12} stroke="#9ca3af" />
+        <YAxis 
+          dataKey="name" 
+          type="category"
+          fontSize={12} 
+          stroke="#9ca3af"
+          width={100}
+          tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+        />
+        <Tooltip content={<FunnelTooltip />} />
+        <Bar 
+          dataKey="value" 
+          name="Quantidade"
+        >
+          {chartData.map((entry, index) => (
+            <Cell 
+              key={`cell-${index}`} 
+              fill={COLORS[entry.name as keyof typeof COLORS] || `#${Math.floor(Math.random()*16777215).toString(16)}`}
+            />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
+
+const SourceConversionChart = ({ data }: { data: Array<{ source: string; total: number; converted: number; rate: number }> }) => {
+  const chartData = data.map(item => ({
     name: item.source,
     total: item.total,
     convertidos: item.converted,
-    taxa: parseFloat(item.rate.toFixed(2))
+    taxa: item.rate
   }));
   
-  // Dados para gráfico de funil
-  const funnelData = data.funnel.map(item => ({
-    name: item.stage,
-    value: item.count
-  }));
-  
-  // Dados para gráfico de eficiência por atendente
-  const attendantData = data.byAttendant.map(item => ({
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 60 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+        <XAxis 
+          dataKey="name" 
+          fontSize={12} 
+          stroke="#9ca3af"
+          angle={-45}
+          textAnchor="end"
+          height={60}
+          tickMargin={10}
+        />
+        <YAxis fontSize={12} stroke="#9ca3af" />
+        <Tooltip content={<SourceTooltip />} />
+        <Legend wrapperStyle={{ paddingTop: '10px' }} />
+        <Bar dataKey="total" name="Total de Leads" fill="#bfdbfe" radius={[4, 4, 0, 0]} stroke="#3b82f6" strokeWidth={1} />
+        <Bar dataKey="convertidos" name="Leads Convertidos" fill="#a7f3d0" radius={[4, 4, 0, 0]} stroke="#10b981" strokeWidth={1} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
+
+const AttendantEfficiencyChart = ({ data }: { data: Array<{ attendant: string; total: number; converted: number; rate: number }> }) => {
+  const chartData = data.map(item => ({
     name: item.attendant,
-    taxa: parseFloat(item.rate.toFixed(2)),
+    taxa: item.rate,
     total: item.total,
     convertidos: item.converted
   }));
   
   return (
-    <div className="space-y-6">
-      {/* Cards com métricas principais */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Total de Leads */}
-        <Card className="p-4 no-break">
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Total de Leads</p>
-            <p className="text-2xl font-bold">{data.conversion.total}</p>
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 60 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+        <XAxis 
+          dataKey="name" 
+          fontSize={12} 
+          stroke="#9ca3af"
+          angle={-45}
+          textAnchor="end"
+          height={60}
+          tickMargin={10}
+        />
+        <YAxis fontSize={12} stroke="#9ca3af" />
+        <Tooltip content={<EfficiencyTooltip />} />
+        <Line 
+          type="monotone" 
+          dataKey="taxa" 
+          name="Taxa de Conversão (%)" 
+          stroke="#c084fc"
+          strokeWidth={2}
+          dot={{ r: 4, strokeWidth: 2, fill: "#fff" }}
+          activeDot={{ r: 6, strokeWidth: 2 }}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+};
+
+const LeadsReports: React.FC<LeadsReportsProps> = ({ data }) => {
+  // BentoGrid cards configuration
+  const bentoCards = [
+    {
+      Icon: Users,
+      name: 'Total de Leads',
+      description: 'Leads gerados no período',
+      background: (
+        <KpiCardContent
+          value={data.conversion.total.toString()}
+          change={0}
+          isPositive={true}
+        />
+      ),
+      className: 'md:col-span-1 md:row-span-1',
+    },
+    {
+      Icon: ArrowUpRight,
+      name: 'Taxa de Conversão',
+      description: 'Percentual de leads convertidos',
+      background: (
+        <div className="flex flex-col items-center justify-center h-full p-4">
+          <div className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            {data.conversion.rate.toFixed(1)}%
           </div>
-        </Card>
-        
-        {/* Taxa de Conversão */}
-        <Card className="p-4 no-break">
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Taxa de Conversão</p>
-            <p className="text-2xl font-bold">{data.conversion.rate.toFixed(2)}%</p>
-            <Progress value={data.conversion.rate} />
-          </div>
-        </Card>
-        
-        {/* Tempo Médio de Conversão */}
-        <Card className="p-4 no-break">
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Tempo Médio de Conversão</p>
-            <p className="text-2xl font-bold">{data.conversionTime.toFixed(1)} dias</p>
-          </div>
-        </Card>
-      </div>
-      
-      {/* Gráfico de funil de conversão */}
-      <Card className="p-4 no-break">
-        <div className="mb-4">
-          <h3 className="text-lg font-medium">Funil de Conversão</h3>
-          <p className="text-sm text-muted-foreground">Distribuição de leads por estágio do funil</p>
-        </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={funnelData}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis 
-                  dataKey="name" 
-                  type="category"
-                  tick={{ fontSize: 12 }} 
-                />
-                <Tooltip />
-                <Legend />
-                <Bar 
-                  dataKey="value" 
-                  name="Quantidade" 
-                >
-                  {funnelData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name] || COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          
-          {/* Detalhes do Funil em Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-2">
-            {funnelData.map((item, index) => (
-              <Card key={index} className="p-3 flex items-center">
-                <div 
-                  className="w-3 h-3 rounded-full mr-2"
-                  style={{ backgroundColor: STATUS_COLORS[item.name] || COLORS[index % COLORS.length] }}
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{item.name}</p>
-                  <div className="flex justify-between">
-                    <span className="text-lg font-bold">{item.value}</span>
-                    <span className="text-muted-foreground text-sm">
-                      {data.conversion.total > 0 ? 
-                        ((item.value / data.conversion.total) * 100).toFixed(1) : 0}%
-                    </span>
-                  </div>
-                </div>
-              </Card>
-            ))}
+          <Progress value={data.conversion.rate} className="w-full" />
+          <div className="text-xs text-gray-500 mt-2">
+            {data.conversion.converted} de {data.conversion.total} leads
           </div>
         </div>
-      </Card>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Gráfico de conversão por fonte */}
-        <Card className="p-4 no-break">
-          <div className="mb-4">
-            <h3 className="text-lg font-medium">Conversão por Fonte</h3>
-            <p className="text-sm text-muted-foreground">Taxa de conversão por origem do lead</p>
-          </div>
-          
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={sourceData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 70 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="name" 
-                  angle={-45} 
-                  textAnchor="end" 
-                  height={70} 
-                  tick={{ fontSize: 12 }}
-                />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="total" name="Total de Leads" fill="#1890ff" />
-                <Bar dataKey="convertidos" name="Leads Convertidos" fill="#52c41a" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-        
-        {/* Gráfico de eficiência por atendente */}
-        <Card className="p-4 no-break">
-          <div className="mb-4">
-            <h3 className="text-lg font-medium">Eficiência por Atendente</h3>
-            <p className="text-sm text-muted-foreground">Taxa de conversão por atendente</p>
-          </div>
-          
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={attendantData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 70 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="name" 
-                  angle={-45} 
-                  textAnchor="end" 
-                  height={70}
-                  tick={{ fontSize: 12 }} 
-                />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="taxa" 
-                  name="Taxa de Conversão (%)" 
-                  stroke="#722ed1"
-                  activeDot={{ r: 8 }} 
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
-      
-      {/* Tabela de conversão por fonte */}
-      <Card className="p-4 no-break">
-        <div className="mb-4">
-          <h3 className="text-lg font-medium">Detalhamento por Fonte</h3>
-          <p className="text-sm text-muted-foreground">Métricas detalhadas por fonte de lead</p>
+      ),
+      className: 'md:col-span-1 md:row-span-1',
+    },
+    {
+      Icon: Clock,
+      name: 'Tempo de Conversão',
+      description: 'Tempo médio para converter um lead',
+      background: (
+        <KpiCardContent
+          value={`${data.conversionTime.toFixed(1)} dias`}
+          change={0}
+          isPositive={true}
+        />
+      ),
+      className: 'md:col-span-1 md:row-span-1',
+    },
+    {
+      Icon: Filter,
+      name: 'Funil de Conversão',
+      description: 'Distribuição de leads por estágio',
+      background: (
+        <div className="h-full w-full p-4">
+          <ConversionFunnelChart data={data.funnel} total={data.conversion.total} />
         </div>
-        
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fonte</TableHead>
-              <TableHead className="text-center">Total de Leads</TableHead>
-              <TableHead className="text-center">Convertidos</TableHead>
-              <TableHead className="text-right">Taxa de Conversão</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.bySource.map((item, index) => (
-              <TableRow key={index}>
-                <TableCell>{item.source}</TableCell>
-                <TableCell className="text-center">{item.total}</TableCell>
-                <TableCell className="text-center">{item.converted}</TableCell>
-                <TableCell className="text-right">{item.rate.toFixed(2)}%</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
-      
-      {/* Tabela de eficiência por atendente */}
-      <Card className="p-4 no-break">
-        <div className="mb-4">
-          <h3 className="text-lg font-medium">Desempenho por Atendente</h3>
-          <p className="text-sm text-muted-foreground">Métricas de conversão por atendente</p>
+      ),
+      className: 'md:col-span-3 md:row-span-2',
+    },
+    {
+      Icon: BarChart2,
+      name: 'Conversão por Fonte',
+      description: 'Desempenho de conversão por origem do lead',
+      background: (
+        <div className="h-full w-full p-4">
+          <SourceConversionChart data={data.bySource} />
         </div>
-        
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Atendente</TableHead>
-              <TableHead className="text-center">Leads Atribuídos</TableHead>
-              <TableHead className="text-center">Leads Convertidos</TableHead>
-              <TableHead className="text-right">Taxa de Conversão</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.byAttendant.map((item, index) => (
-              <TableRow key={index}>
-                <TableCell>{item.attendant}</TableCell>
-                <TableCell className="text-center">{item.total}</TableCell>
-                <TableCell className="text-center">{item.converted}</TableCell>
-                <TableCell className="text-right">{item.rate.toFixed(2)}%</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
-    </div>
+      ),
+      className: 'md:col-span-2 md:row-span-2',
+    },
+    {
+      Icon: Activity,
+      name: 'Eficiência por Atendente',
+      description: 'Taxa de conversão por responsável',
+      background: (
+        <div className="h-full w-full p-4">
+          <AttendantEfficiencyChart data={data.byAttendant} />
+        </div>
+      ),
+      className: 'md:col-span-1 md:row-span-2',
+    },
+  ];
+
+  return (
+    <BentoGrid className="md:grid-cols-3">
+      {bentoCards.map((card) => (
+        <BentoCard key={card.name} {...card} cta="" onCtaClick={() => {}} />
+      ))}
+    </BentoGrid>
   );
 };
 

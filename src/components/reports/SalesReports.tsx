@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { BentoGrid, BentoCard } from '@/components/ui/bento-grid';
 import { 
   AreaChart, 
   Area, 
@@ -17,9 +18,10 @@ import {
   Legend, 
   ResponsiveContainer 
 } from 'recharts';
-import { ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUp, ArrowDown, DollarSign, CreditCard, Wrench, LineChart, BarChart2, PieChart as PieChartIcon, List } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { KpiCardContent } from '../marketing/KpiCardContent';
 
 interface SalesReportData {
   byPeriod: Array<{
@@ -46,190 +48,292 @@ interface SalesReportsProps {
   data: SalesReportData;
 }
 
-const COLORS = ['#1890ff', '#52c41a', '#faad14', '#eb2f96', '#722ed1', '#2f54eb'];
+// Custom tooltips for charts
+const RevenueChartTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">{label}</p>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm text-gray-700 dark:text-gray-300">Faturamento:</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {formatCurrency(payload[0].value)}
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
-const SalesReports: React.FC<SalesReportsProps> = ({ data }) => {
-  // Formatar dados para gráfico de área (faturamento por período)
-  const chartData = data.byPeriod.map(item => ({
+const ServiceChartTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const total = payload[0]?.payload?.total || 0;
+    const value = payload[0]?.value || 0;
+    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+    
+    return (
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">{label}</p>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm text-gray-700 dark:text-gray-300">Valor:</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {formatCurrency(value)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-700 dark:text-gray-300">% do total:</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {percentage}%
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+const PieChartTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">{payload[0].name}</p>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm text-gray-700 dark:text-gray-300">Valor:</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {formatCurrency(payload[0].value)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-700 dark:text-gray-300">% do total:</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {`${(payload[0].percent * 100).toFixed(1)}%`}
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+// Chart components
+const RevenueByPeriodChart = ({ data }: { data: Array<{ date: Date; revenue: number }> }) => {
+  const chartData = data.map(item => ({
     name: item.date.toLocaleDateString('pt-BR'),
     valor: item.revenue
   }));
   
-  // Dados para gráfico de barras (faturamento por serviço)
-  const barData = data.byService.map(item => ({
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+        <XAxis dataKey="name" fontSize={12} stroke="#9ca3af" />
+        <YAxis fontSize={12} stroke="#9ca3af" tickFormatter={(value) => formatCurrency(value)} />
+        <Tooltip content={<RevenueChartTooltip />} />
+        <Area 
+          type="monotone" 
+          dataKey="valor" 
+          stroke="#8884d8" 
+          fill="#c7d2fe" 
+          strokeWidth={2}
+          name="Faturamento"
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+};
+
+const ServiceRevenueChart = ({ data }: { data: Array<{ service: string; revenue: number }> }) => {
+  const total = data.reduce((sum, item) => sum + item.revenue, 0);
+  const chartData = data.map(item => ({
     name: item.service,
-    valor: item.revenue
+    valor: item.revenue,
+    total
   }));
-  
-  // Dados para gráfico de pizza (top serviços)
-  const pieData = data.topServices.map(item => ({
-    name: item.service,
-    value: item.revenue
-  }));
-  
-  const formatTooltipValue = (value) => {
-    return formatCurrency(value);
-  };
   
   return (
-    <div className="space-y-6">
-      {/* Cards com métricas principais */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Faturamento Total */}
-        <Card className="p-4 no-break">
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Faturamento Total</p>
-            <p className="text-2xl font-bold">{formatCurrency(data.comparison.current)}</p>
-            
-            {data.comparison.percentage !== 0 && (
-              <div className={`flex items-center gap-1 text-sm ${data.comparison.percentage >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {data.comparison.percentage >= 0 ? 
-                  <ArrowUp className="h-4 w-4" /> : 
-                  <ArrowDown className="h-4 w-4" />}
-                <span>{Math.abs(data.comparison.percentage).toFixed(2)}% vs. período anterior</span>
-              </div>
-            )}
-          </div>
-        </Card>
-        
-        {/* Ticket Médio */}
-        <Card className="p-4 no-break">
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Ticket Médio</p>
-            <p className="text-2xl font-bold">{formatCurrency(data.ticketAverage)}</p>
-          </div>
-        </Card>
-        
-        {/* Total de Serviços */}
-        <Card className="p-4 no-break">
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Serviços Realizados</p>
-            <p className="text-2xl font-bold">{data.byPeriod.length}</p>
-          </div>
-        </Card>
-      </div>
-      
-      {/* Gráfico de faturamento por período */}
-      <Card className="p-4 no-break">
-        <div className="mb-4">
-          <h3 className="text-lg font-medium">Faturamento por Período</h3>
-          <p className="text-sm text-muted-foreground">Evolução do faturamento no período selecionado</p>
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 70 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+        <XAxis 
+          dataKey="name" 
+          fontSize={12} 
+          stroke="#9ca3af"
+          angle={-45}
+          textAnchor="end"
+          height={70}
+          tickMargin={20}
+        />
+        <YAxis fontSize={12} stroke="#9ca3af" tickFormatter={(value) => formatCurrency(value)} />
+        <Tooltip content={<ServiceChartTooltip />} />
+        <Bar 
+          dataKey="valor" 
+          fill="#a7f3d0" 
+          radius={[4, 4, 0, 0]}
+          stroke="#10b981"
+          strokeWidth={1}
+          name="Faturamento"
+        />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
+
+const TopServicesChart = ({ data }: { data: Array<{ service: string; revenue: number }> }) => {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart
+        data={[...data].reverse()}
+        layout="vertical"
+        margin={{ top: 10, right: 30, left: 100, bottom: 5 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+        <XAxis type="number" fontSize={12} stroke="#9ca3af" tickFormatter={(value) => formatCurrency(value)} />
+        <YAxis 
+          type="category" 
+          dataKey="service" 
+          fontSize={12} 
+          stroke="#9ca3af" 
+          width={80}
+          tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+        />
+        <Tooltip content={<ServiceChartTooltip />} />
+        <Bar 
+          dataKey="revenue" 
+          fill="#bfdbfe" 
+          radius={[0, 4, 4, 0]}
+          stroke="#3b82f6"
+          strokeWidth={1}
+          name="Faturamento"
+        />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
+
+const ServiceDetailChart = ({ data }: { data: Array<{ service: string; revenue: number }> }) => {
+  const COLORS = ['#a7f3d0', '#bfdbfe', '#fde68a', '#fbb6ce', '#c7d2fe', '#d1fae5'];
+  
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart>
+        <Pie
+          data={data}
+          cx="50%"
+          cy="50%"
+          labelLine={false}
+          outerRadius={80}
+          innerRadius={30}
+          fill="#8884d8"
+          dataKey="revenue"
+          nameKey="service"
+          label={({ service, percent }) => `${service}: ${(percent * 100).toFixed(0)}%`}
+        >
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+          ))}
+        </Pie>
+        <Tooltip content={<PieChartTooltip />} />
+        <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+};
+
+const SalesReports: React.FC<SalesReportsProps> = ({ data }) => {
+  // BentoGrid cards configuration
+  const bentoCards = [
+    {
+      Icon: DollarSign,
+      name: 'Faturamento Total',
+      description: 'Valor total faturado no período',
+      background: (
+        <KpiCardContent
+          value={formatCurrency(data.comparison.current)}
+          change={data.comparison.percentage}
+          prevValue={formatCurrency(data.comparison.previous)}
+        />
+      ),
+      className: 'md:col-span-1 md:row-span-1',
+    },
+    {
+      Icon: CreditCard,
+      name: 'Ticket Médio',
+      description: 'Valor médio por serviço',
+      background: (
+        <KpiCardContent
+          value={formatCurrency(data.ticketAverage)}
+          change={0}
+          isPositive={true}
+        />
+      ),
+      className: 'md:col-span-1 md:row-span-1',
+    },
+    {
+      Icon: Wrench,
+      name: 'Serviços Realizados',
+      description: 'Quantidade de serviços no período',
+      background: (
+        <KpiCardContent
+          value={data.byPeriod.length.toString()}
+          change={0}
+          isPositive={true}
+        />
+      ),
+      className: 'md:col-span-1 md:row-span-1',
+    },
+    {
+      Icon: LineChart,
+      name: 'Faturamento por Período',
+      description: 'Evolução do faturamento no período selecionado',
+      background: (
+        <div className="h-full w-full p-4">
+          <RevenueByPeriodChart data={data.byPeriod} />
         </div>
-        
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={chartData}
-              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis tickFormatter={formatTooltipValue} />
-              <Tooltip formatter={formatTooltipValue} />
-              <Area 
-                type="monotone" 
-                dataKey="valor" 
-                stroke="#1890ff" 
-                fill="#1890ff" 
-                fillOpacity={0.3}
-                name="Faturamento" 
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+      ),
+      className: 'md:col-span-3 md:row-span-2',
+    },
+    {
+      Icon: BarChart2,
+      name: 'Faturamento por Serviço',
+      description: 'Comparativo de faturamento por tipo de serviço',
+      background: (
+        <div className="h-full w-full p-4">
+          <ServiceRevenueChart data={data.byService} />
         </div>
-      </Card>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Gráfico de faturamento por serviço */}
-        <Card className="p-4 no-break">
-          <div className="mb-4">
-            <h3 className="text-lg font-medium">Faturamento por Serviço</h3>
-            <p className="text-sm text-muted-foreground">Comparativo de faturamento por tipo de serviço</p>
-          </div>
-          
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={barData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 70 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="name" 
-                  angle={-45} 
-                  textAnchor="end" 
-                  height={70}
-                  tick={{ fontSize: 12 }} 
-                />
-                <YAxis tickFormatter={formatTooltipValue} />
-                <Tooltip formatter={formatTooltipValue} />
-                <Bar 
-                  dataKey="valor" 
-                  fill="#52c41a" 
-                  name="Faturamento" 
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-        
-        {/* Gráfico de top serviços */}
-        <Card className="p-4 no-break">
-          <div className="mb-4">
-            <h3 className="text-lg font-medium">Top Serviços Mais Lucrativos</h3>
-            <p className="text-sm text-muted-foreground">Serviços com maior faturamento no período</p>
-          </div>
-          
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={formatTooltipValue} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
-      
-      {/* Tabela de faturamento por serviço */}
-      <Card className="p-4 no-break">
-        <div className="mb-4">
-          <h3 className="text-lg font-medium">Detalhamento por Serviço</h3>
-          <p className="text-sm text-muted-foreground">Faturamento detalhado por tipo de serviço</p>
+      ),
+      className: 'md:col-span-2 md:row-span-2',
+    },
+    {
+      Icon: List,
+      name: 'Top Serviços',
+      description: 'Serviços com maior faturamento',
+      background: (
+        <div className="h-full w-full p-4">
+          <TopServicesChart data={data.topServices} />
         </div>
-        
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Serviço</TableHead>
-              <TableHead className="text-right">Faturamento</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.byService.map((item, index) => (
-              <TableRow key={index}>
-                <TableCell>{item.service}</TableCell>
-                <TableCell className="text-right">{formatCurrency(item.revenue)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
-    </div>
+      ),
+      className: 'md:col-span-1 md:row-span-2',
+    },
+    {
+      Icon: PieChartIcon,
+      name: 'Detalhamento por Serviço',
+      description: 'Distribuição percentual do faturamento',
+      background: (
+        <div className="h-full w-full p-4">
+          <ServiceDetailChart data={data.topServices} />
+        </div>
+      ),
+      className: 'md:col-span-3 md:row-span-2',
+    },
+  ];
+
+  return (
+    <BentoGrid className="md:grid-cols-3">
+      {bentoCards.map((card) => (
+        <BentoCard key={card.name} {...card} cta="" onCtaClick={() => {}} />
+      ))}
+    </BentoGrid>
   );
 };
 
