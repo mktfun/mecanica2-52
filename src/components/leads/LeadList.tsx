@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Input } from "@/components/ui/input";
 import { 
@@ -246,7 +247,9 @@ const LeadList = () => {
                         <div className="text-xs text-muted-foreground">{lead.email}</div>
                       </TableCell>
                       <TableCell>
-                        {lead.vehicle_brand} {lead.vehicle_model} ({lead.vehicle_year})
+                        {lead.vehicle ? 
+                          `${lead.vehicle.make} ${lead.vehicle.model} (${lead.vehicle.year || ''})` : 
+                          'Veículo não especificado'}
                       </TableCell>
                       <TableCell>{lead.service_interest || "N/A"}</TableCell>
                       <TableCell>{lead.source || "Desconhecido"}</TableCell>

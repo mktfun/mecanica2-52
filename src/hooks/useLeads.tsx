@@ -82,10 +82,7 @@ export const useLeads = () => {
         vehicle_id: lead.vehicle_id || undefined,
         // Os dados expandidos de cliente e veículo
         client: lead.client,
-        vehicle: lead.vehicle,
-        vehicle_brand: '', // Mantendo para compatibilidade, mas não mais usado
-        vehicle_model: '', // Mantendo para compatibilidade, mas não mais usado
-        vehicle_year: ''   // Mantendo para compatibilidade, mas não mais usado
+        vehicle: lead.vehicle
       }));
 
       setLeads(formattedLeads);
@@ -144,10 +141,7 @@ export const useLeads = () => {
           client_id: data[0].client_id || undefined,
           vehicle_id: data[0].vehicle_id || undefined,
           client: data[0].client,
-          vehicle: data[0].vehicle,
-          vehicle_brand: '', // Mantendo para compatibilidade, mas não mais usado
-          vehicle_model: '', // Mantendo para compatibilidade, mas não mais usado
-          vehicle_year: ''   // Mantendo para compatibilidade, mas não mais usado
+          vehicle: data[0].vehicle
         };
         
         setLeads(prevLeads => [formattedLead, ...prevLeads]);
@@ -275,10 +269,7 @@ export const useLeads = () => {
         assigned_to: data.assigned_to || '',
         notes: data.notes || '',
         client_id: data.client_id || undefined,
-        vehicle_id: data.vehicle_id || undefined,
-        vehicle_brand: '', // Mantendo para compatibilidade, mas não mais usado
-        vehicle_model: '', // Mantendo para compatibilidade, mas não mais usado
-        vehicle_year: ''   // Mantendo para compatibilidade, mas não mais usado
+        vehicle_id: data.vehicle_id || undefined
       };
     } catch (err: any) {
       console.error('Erro ao buscar lead por ID:', err);

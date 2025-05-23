@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { formatDistanceToNow } from 'date-fns';
@@ -147,7 +148,9 @@ const LeadKanban = () => {
                                 <div>{lead.phone}</div>
                                 <div className="truncate">{lead.service_interest}</div>
                                 <div className="text-muted-foreground">
-                                  {lead.vehicle_brand} {lead.vehicle_model} ({lead.vehicle_year})
+                                  {lead.vehicle ? 
+                                    `${lead.vehicle.make} ${lead.vehicle.model} (${lead.vehicle.year || ''})` : 
+                                    'Veículo não especificado'}
                                 </div>
                               </div>
                               

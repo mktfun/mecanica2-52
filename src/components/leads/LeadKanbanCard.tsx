@@ -1,3 +1,4 @@
+
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card } from "@/components/ui/card";
@@ -127,7 +128,9 @@ const LeadKanbanCard = ({ lead, onDragStart, onClick }: LeadKanbanCardProps) => 
           <div className="flex items-center text-muted-foreground">
             <Car className="h-3 w-3 mr-1 shrink-0" /> 
             <span className="truncate">
-              {lead.vehicle_brand} {lead.vehicle_model} {lead.vehicle_year ? `(${lead.vehicle_year})` : ''}
+              {lead.vehicle ? 
+                `${lead.vehicle.make} ${lead.vehicle.model} ${lead.vehicle.year ? `(${lead.vehicle.year})` : ''}` : 
+                'Veículo não especificado'}
             </span>
           </div>
         </div>

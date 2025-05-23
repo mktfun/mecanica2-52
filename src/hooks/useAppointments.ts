@@ -1,11 +1,12 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from "sonner";
 import { Appointment, AppointmentStatus, AppointmentFilter } from '@/types/appointment';
+import { toast } from 'sonner';
+import { isSameDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 
-export function useAppointments(filter?: AppointmentFilter) {
+export const useAppointments = (filter?: AppointmentFilter) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userOrganizationId, setUserOrganizationId] = useState<string | null>(null);
@@ -36,7 +37,7 @@ export function useAppointments(filter?: AppointmentFilter) {
     }
   }, []);
 
-  // Buscar todos os agendamentos
+  // Função para buscar todos os agendamentos
   const fetchAppointments = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -50,20 +51,48 @@ export function useAppointments(filter?: AppointmentFilter) {
     }
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('appointments')
         .select(`
           *,
-          client:client_id(*),
-          vehicle:vehicle_id(*)
+          client:clients!inner(id, name, email, phone, address, city, state, postal_code),
+          vehicle:vehicles!inner(id, make, model, year, plate, color)
         `)
         .eq('organization_id', orgId)
         .order('start_time', { ascending: true });
+
+      // Aplicar filtros se fornecidos
+      if (filter?.startDate) {
+        query = query.gte('start_time', startOfDay(filter.startDate).toISOString());
+      }
+      
+      if (filter?.endDate) {
+        query = query.lte('start_time', endOfDay(filter.endDate).toISOString());
+      }
+      
+      if (filter?.status) {
+        query = query.eq('status', filter.status);
+      }
+      
+      if (filter?.mechanic) {
+        query = query.ilike('mechanic_name', `%${filter.mechanic}%`);
+      }
+      
+      if (filter?.searchText) {
+        query = query.or(`
+          service_type.ilike.%${filter.searchText}%,
+          mechanic_name.ilike.%${filter.searchText}%,
+          notes.ilike.%${filter.searchText}%
+        `);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         throw error;
       }
 
+      // Mapear os dados para o formato esperado
       const formattedAppointments: Appointment[] = (data || []).map(appointment => ({
         id: appointment.id,
         client_id: appointment.client_id,
@@ -92,411 +121,188 @@ export function useAppointments(filter?: AppointmentFilter) {
     } finally {
       setIsLoading(false);
     }
-  }, [userOrganizationId, fetchUserOrganization]);
+  }, [userOrganizationId, fetchUserOrganization, filter]);
 
-  // Aplicar filtros aos agendamentos
-  const applyFilters = useCallback(() => {
-    if (!filter) {
-      setFilteredAppointments(appointments);
-      return;
-    }
-
-    let filtered = [...appointments];
-
-    // Filtro por intervalo de datas
-    if (filter.startDate) {
-      filtered = filtered.filter(appointment => 
-        new Date(appointment.start_time) >= filter.startDate!
-      );
-    }
-    
-    if (filter.endDate) {
-      filtered = filtered.filter(appointment => 
-        new Date(appointment.start_time) <= filter.endDate!
-      );
-    }
-
-    // Filtro por cliente
-    if (filter.client) {
-      filtered = filtered.filter(appointment => 
-        appointment.client?.name.toLowerCase().includes(filter.client!.toLowerCase())
-      );
-    }
-
-    // Filtro por veículo
-    if (filter.vehicle) {
-      filtered = filtered.filter(appointment => {
-        const vehicleInfo = appointment.vehicle?.make + ' ' + appointment.vehicle?.model + ' ' + (appointment.vehicle?.plate || '');
-        return vehicleInfo.toLowerCase().includes(filter.vehicle!.toLowerCase());
-      });
-    }
-
-    // Filtro por tipo de serviço
-    if (filter.service) {
-      filtered = filtered.filter(appointment => 
-        appointment.service_type.toLowerCase().includes(filter.service!.toLowerCase()) ||
-        (appointment.service_description && appointment.service_description.toLowerCase().includes(filter.service!.toLowerCase()))
-      );
-    }
-
-    // Filtro por mecânico
-    if (filter.mechanic) {
-      filtered = filtered.filter(appointment => 
-        appointment.mechanic_name.toLowerCase().includes(filter.mechanic!.toLowerCase())
-      );
-    }
-
-    // Filtro por status
-    if (filter.status) {
-      filtered = filtered.filter(appointment => 
-        appointment.status === filter.status
-      );
-    }
-
-    // Filtro por texto de busca
-    if (filter.searchText) {
-      const searchLower = filter.searchText.toLowerCase();
-      filtered = filtered.filter(appointment => 
-        appointment.client?.name.toLowerCase().includes(searchLower) ||
-        (appointment.client?.phone && appointment.client.phone.toLowerCase().includes(searchLower)) ||
-        (appointment.vehicle?.make + ' ' + appointment.vehicle?.model).toLowerCase().includes(searchLower) ||
-        (appointment.vehicle?.plate && appointment.vehicle.plate.toLowerCase().includes(searchLower)) ||
-        appointment.service_type.toLowerCase().includes(searchLower) ||
-        (appointment.service_description && appointment.service_description.toLowerCase().includes(searchLower)) ||
-        appointment.mechanic_name.toLowerCase().includes(searchLower) ||
-        (appointment.notes && appointment.notes.toLowerCase().includes(searchLower))
-      );
-    }
-
-    setFilteredAppointments(filtered);
-  }, [appointments, filter]);
-
-  // Adicionar um novo agendamento
-  const addAppointment = async (appointment: Omit<Appointment, 'id' | 'created_at' | 'updated_at' | 'organization_id'>) => {
+  // Função para adicionar um agendamento
+  const addAppointment = async (newAppointment: Omit<Appointment, 'id' | 'created_at' | 'updated_at' | 'organization_id'>) => {
     const orgId = userOrganizationId || await fetchUserOrganization();
     
     if (!orgId) {
       toast.error('Usuário não pertence a nenhuma organização');
       throw new Error('Usuário não pertence a nenhuma organização');
     }
-    
+
     try {
-      if (checkForTimeConflicts(appointment)) {
-        toast.error("Conflito de horário", {
-          description: "Já existe um agendamento para este mecânico neste horário"
-        });
-        return null;
-      }
-      
-      const appointmentData = {
-        ...appointment,
+      const appointmentWithOrg = {
+        ...newAppointment,
         organization_id: orgId
       };
-      
+
       const { data, error } = await supabase
         .from('appointments')
-        .insert([appointmentData])
+        .insert([appointmentWithOrg])
         .select(`
           *,
-          client:client_id(*),
-          vehicle:vehicle_id(*)
-        `)
-        .single();
+          client:clients!inner(id, name, email, phone, address, city, state, postal_code),
+          vehicle:vehicles!inner(id, make, model, year, plate, color)
+        `);
+
+      if (error) {
+        throw error;
+      }
+
+      if (data && data[0]) {
+        const formattedAppointment: Appointment = {
+          id: data[0].id,
+          client_id: data[0].client_id,
+          vehicle_id: data[0].vehicle_id,
+          lead_id: data[0].lead_id,
+          service_type: data[0].service_type,
+          service_description: data[0].service_description,
+          start_time: data[0].start_time,
+          end_time: data[0].end_time,
+          mechanic_name: data[0].mechanic_name,
+          status: data[0].status as AppointmentStatus,
+          notes: data[0].notes,
+          estimated_cost: data[0].estimated_cost,
+          organization_id: data[0].organization_id,
+          created_at: data[0].created_at,
+          updated_at: data[0].updated_at,
+          client: data[0].client,
+          vehicle: data[0].vehicle
+        };
         
-      if (error) {
-        throw error;
+        setAppointments(prev => [...prev, formattedAppointment]);
+        toast.success('Agendamento criado com sucesso');
+        return formattedAppointment;
       }
-      
-      if (appointment.lead_id) {
-        await supabase
-          .from('leads')
-          .update({ 
-            status: 'scheduled', 
-            status_changed_at: new Date().toISOString(),
-            last_interaction_at: new Date().toISOString()
-          })
-          .eq('id', appointment.lead_id);
-      }
-      
-      const formattedAppointment: Appointment = {
-        id: data.id,
-        client_id: data.client_id,
-        vehicle_id: data.vehicle_id,
-        lead_id: data.lead_id,
-        service_type: data.service_type,
-        service_description: data.service_description,
-        start_time: data.start_time,
-        end_time: data.end_time,
-        mechanic_name: data.mechanic_name,
-        status: data.status as AppointmentStatus,
-        notes: data.notes,
-        estimated_cost: data.estimated_cost,
-        organization_id: data.organization_id,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-        client: data.client,
-        vehicle: data.vehicle
-      };
-      
-      setAppointments(prev => [...prev, formattedAppointment]);
-      
-      toast.success("Agendamento criado", {
-        description: "O agendamento foi criado com sucesso"
-      });
-      
-      return formattedAppointment;
-    } catch (error) {
-      console.error("Erro ao criar agendamento:", error);
-      toast.error("Erro", {
-        description: "Não foi possível criar o agendamento"
-      });
-      throw error;
+    } catch (err: any) {
+      console.error('Erro ao adicionar agendamento:', err);
+      toast.error('Erro ao adicionar agendamento');
+      throw err;
     }
   };
 
-  // Atualizar um agendamento existente
-  const updateAppointment = async (id: string, updates: Partial<Appointment>) => {
+  // Função para atualizar um agendamento
+  const updateAppointment = (id: string, updatedData: Partial<Appointment>) => {
     try {
-      if ((updates.start_time || updates.end_time || updates.mechanic_name) && 
-          checkForTimeConflicts(updates, id)) {
-        toast.error("Conflito de horário", {
-          description: "Já existe um agendamento para este mecânico neste horário"
-        });
-        return null;
-      }
-
-      const { data, error } = await supabase
-        .from('appointments')
-        .update(updates)
-        .eq('id', id)
-        .select(`
-          *,
-          client:client_id(*),
-          vehicle:vehicle_id(*)
-        `)
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
       setAppointments(prev => 
-        prev.map(appointment => appointment.id === id ? data : appointment)
-      );
-
-      toast.success("Agendamento atualizado", {
-        description: "As alterações foram salvas com sucesso"
-      });
-
-      return data;
-    } catch (error) {
-      console.error("Erro ao atualizar agendamento:", error);
-      toast.error("Erro", {
-        description: "Não foi possível atualizar o agendamento"
-      });
-      throw error;
-    }
-  };
-
-  // Atualizar o status de um agendamento
-  const updateAppointmentStatus = async (id: string, status: AppointmentStatus) => {
-    try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .update({ status })
-        .eq('id', id)
-        .select(`
-          *,
-          client:client_id(*),
-          vehicle:vehicle_id(*)
-        `)
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      setAppointments(prev => 
-        prev.map(appointment => appointment.id === id ? data : appointment)
+        prev.map(appointment => 
+          appointment.id === id ? { ...appointment, ...updatedData } : appointment
+        )
       );
       
-      toast.success("Status atualizado", {
-        description: `O agendamento foi marcado como ${status === 'scheduled' ? 'agendado' : 
-                                                     status === 'confirmed' ? 'confirmado' :
-                                                     status === 'in-progress' ? 'em andamento' : 
-                                                     status === 'completed' ? 'concluído' : 'cancelado'}`
-      });
-      
-      return data;
-    } catch (error) {
-      console.error("Erro ao atualizar status:", error);
-      toast.error("Erro", {
-        description: "Não foi possível atualizar o status"
-      });
-      throw error;
-    }
-  };
-
-  // Remover um agendamento
-  const removeAppointment = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('appointments')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        throw error;
-      }
-
-      setAppointments(prev => prev.filter(appointment => appointment.id !== id));
-      
-      toast.success("Agendamento removido", {
-        description: "O agendamento foi removido com sucesso"
-      });
-      
+      toast.success('Agendamento atualizado com sucesso');
       return true;
-    } catch (error) {
-      console.error("Erro ao remover agendamento:", error);
-      toast.error("Erro", {
-        description: "Não foi possível remover o agendamento"
-      });
-      throw error;
-    }
-  };
-
-  // Obter agendamentos para uma data específica
-  const getAppointmentsForDate = useCallback((date: Date) => {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-    
-    return appointments.filter(appointment => {
-      const appointmentDate = new Date(appointment.start_time);
-      return appointmentDate >= startOfDay && appointmentDate <= endOfDay;
-    });
-  }, [appointments]);
-
-  // Verificar conflitos de horário
-  const checkForTimeConflicts = (appointment: Partial<Appointment>, excludeId?: string): boolean => {
-    if (!appointment.start_time || !appointment.end_time || !appointment.mechanic_name) {
+    } catch (err: any) {
+      console.error('Erro ao atualizar agendamento:', err);
+      toast.error('Erro ao atualizar agendamento');
       return false;
     }
+  };
 
-    const appointmentStart = new Date(appointment.start_time);
-    const appointmentEnd = new Date(appointment.end_time);
+  // Função para atualizar status do agendamento
+  const updateAppointmentStatus = (id: string, status: AppointmentStatus) => {
+    return updateAppointment(id, { status });
+  };
+
+  // Função para remover um agendamento
+  const removeAppointment = (id: string) => {
+    try {
+      setAppointments(prev => prev.filter(appointment => appointment.id !== id));
+      toast.success('Agendamento removido com sucesso');
+      return true;
+    } catch (err: any) {
+      console.error('Erro ao remover agendamento:', err);
+      toast.error('Erro ao remover agendamento');
+      return false;
+    }
+  };
+
+  // Função para obter agendamentos para uma data específica
+  const getAppointmentsForDate = (date: Date) => {
+    return appointments.filter(appointment => 
+      isSameDay(new Date(appointment.start_time), date)
+    );
+  };
+
+  // Função para obter dias que têm agendamentos
+  const getDaysWithAppointments = (startDate: Date, endDate: Date) => {
+    const daysWithAppointments: Date[] = [];
     
-    return appointments.some(existing => {
-      if (excludeId && existing.id === excludeId) return false;
-      
-      if (existing.mechanic_name !== appointment.mechanic_name || existing.status === 'cancelled') {
+    appointments.forEach(appointment => {
+      const appointmentDate = new Date(appointment.start_time);
+      if (isWithinInterval(appointmentDate, { start: startDate, end: endDate })) {
+        // Verificar se a data já não está na lista
+        const dateExists = daysWithAppointments.some(date => 
+          isSameDay(date, appointmentDate)
+        );
+        
+        if (!dateExists) {
+          daysWithAppointments.push(appointmentDate);
+        }
+      }
+    });
+    
+    return daysWithAppointments;
+  };
+
+  // Função para verificar conflitos de horário
+  const checkForTimeConflicts = (startTime: Date, endTime: Date, excludeId?: string) => {
+    return appointments.filter(appointment => {
+      if (excludeId && appointment.id === excludeId) {
         return false;
       }
       
-      const existingStart = new Date(existing.start_time);
-      const existingEnd = new Date(existing.end_time);
+      const appointmentStart = new Date(appointment.start_time);
+      const appointmentEnd = new Date(appointment.end_time);
       
       return (
-        (appointmentStart >= existingStart && appointmentStart < existingEnd) ||
-        (appointmentEnd > existingStart && appointmentEnd <= existingEnd) ||
-        (appointmentStart <= existingStart && appointmentEnd >= existingEnd)
+        (startTime >= appointmentStart && startTime < appointmentEnd) ||
+        (endTime > appointmentStart && endTime <= appointmentEnd) ||
+        (startTime <= appointmentStart && endTime >= appointmentEnd)
       );
     });
   };
 
-  // Obter dias com agendamentos
-  const getDaysWithAppointments = useCallback((startDate: Date, endDate: Date) => {
-    const daysMap: { [key: string]: number } = {};
-    
-    appointments.forEach(appointment => {
-      const date = new Date(appointment.start_time);
-      
-      if (date >= startDate && date <= endDate) {
-        const dateStr = date.toISOString().split('T')[0];
-        daysMap[dateStr] = (daysMap[dateStr] || 0) + 1;
-      }
-    });
-    
-    return daysMap;
-  }, [appointments]);
-
-  // Obter agendamento por ID
-  const getAppointmentById = useCallback(async (id: string): Promise<Appointment | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select(`
-          *,
-          client:client_id(*),
-          vehicle:vehicle_id(*)
-        `)
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') { // No rows found
-          return null;
-        }
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Erro ao buscar agendamento por ID:', error);
-      return null;
-    }
-  }, []);
-
-  // Inicializar o hook buscando a organização do usuário e então os agendamentos
+  // Inicializar o hook
   useEffect(() => {
     const init = async () => {
       const orgId = await fetchUserOrganization();
       setUserOrganizationId(orgId);
       
       if (orgId) {
-        await fetchAppointments();
+        fetchAppointments();
+        
+        // Configurar escuta em tempo real
+        const channel = supabase
+          .channel('realtime_appointments')
+          .on('postgres_changes', { 
+            event: '*', 
+            schema: 'public', 
+            table: 'appointments',
+            filter: `organization_id=eq.${orgId}`
+          }, (payload) => {
+            console.log('Alteração em tempo real detectada:', payload);
+            fetchAppointments();
+          })
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
       } else {
         setAppointments([]);
-        setFilteredAppointments([]);
         setIsLoading(false);
         setError('Usuário não pertence a nenhuma organização');
       }
     };
 
     init();
-    
-    // Configurar a escuta em tempo real para atualizações
-    const orgId = userOrganizationId;
-    if (orgId) {
-      const channel = supabase
-        .channel('appointments-changes')
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
-          table: 'appointments',
-          filter: `organization_id=eq.${orgId}`
-        }, (payload) => {
-          console.log('Alteração em tempo real detectada em agendamentos:', payload);
-          fetchAppointments();
-        })
-        .subscribe();
-      
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [fetchUserOrganization]);
-
-  // Aplicar filtros quando os agendamentos ou os filtros mudarem
-  useEffect(() => {
-    applyFilters();
-  }, [appointments, filter, applyFilters]);
+  }, [fetchUserOrganization, filter]);
 
   return {
-    appointments: filteredAppointments,
-    allAppointments: appointments,
+    appointments,
     isLoading,
     error,
     fetchAppointments,
@@ -505,8 +311,8 @@ export function useAppointments(filter?: AppointmentFilter) {
     updateAppointmentStatus,
     removeAppointment,
     getAppointmentsForDate,
-    checkForTimeConflicts,
     getDaysWithAppointments,
-    getAppointmentById
+    checkForTimeConflicts,
+    userOrganizationId
   };
-}
+};

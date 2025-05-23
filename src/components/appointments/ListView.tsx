@@ -92,6 +92,7 @@ export default function ListView() {
   const getStatusLabel = (status: Appointment['status']) => {
     switch (status) {
       case 'scheduled': return 'Agendado';
+      case 'confirmed': return 'Confirmado';
       case 'in-progress': return 'Em andamento';
       case 'completed': return 'Concluído';
       case 'cancelled': return 'Cancelado';
@@ -179,6 +180,7 @@ export default function ListView() {
               <SelectContent>
                 <SelectItem value="all_statuses">Todos</SelectItem>
                 <SelectItem value="scheduled">Agendado</SelectItem>
+                <SelectItem value="confirmed">Confirmado</SelectItem>
                 <SelectItem value="in-progress">Em andamento</SelectItem>
                 <SelectItem value="completed">Concluído</SelectItem>
                 <SelectItem value="cancelled">Cancelado</SelectItem>
@@ -196,17 +198,17 @@ export default function ListView() {
           <table className="w-full">
             <thead className="border-b dark:border-gray-700">
               <tr className="bg-gray-50 dark:bg-gray-900/50">
-                <th className="py-3 px-4 text-left font-medium text-sm hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer" onClick={() => handleSortChange('client_name')}>
-                  Cliente {renderSortArrow('client_name')}
+                <th className="py-3 px-4 text-left font-medium text-sm hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer" onClick={() => handleSortChange('start_time')}>
+                  Data/Hora {renderSortArrow('start_time')}
                 </th>
-                <th className="py-3 px-4 text-left font-medium text-sm hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer" onClick={() => handleSortChange('vehicle_info')}>
-                  Veículo {renderSortArrow('vehicle_info')}
+                <th className="py-3 px-4 text-left font-medium text-sm">
+                  Cliente
+                </th>
+                <th className="py-3 px-4 text-left font-medium text-sm">
+                  Veículo
                 </th>
                 <th className="py-3 px-4 text-left font-medium text-sm hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer" onClick={() => handleSortChange('service_type')}>
                   Serviço {renderSortArrow('service_type')}
-                </th>
-                <th className="py-3 px-4 text-left font-medium text-sm hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer" onClick={() => handleSortChange('start_time')}>
-                  Data/Hora {renderSortArrow('start_time')}
                 </th>
                 <th className="py-3 px-4 text-left font-medium text-sm hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer" onClick={() => handleSortChange('mechanic_name')}>
                   Mecânico {renderSortArrow('mechanic_name')}
@@ -217,37 +219,46 @@ export default function ListView() {
               </tr>
             </thead>
             <tbody>
-              {sortedAppointments.length > 0 ? (
+              {sortedAppointments.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-8 text-gray-500">
+                    Nenhum agendamento encontrado
+                  </td>
+                </tr>
+              ) : (
                 sortedAppointments.map((appointment) => (
                   <tr 
                     key={appointment.id} 
-                    className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900/50 cursor-pointer transition-colors"
+                    className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
                     onClick={() => handleAppointmentClick(appointment)}
                   >
-                    <td className="py-3 px-4">{appointment.client_name}</td>
-                    <td className="py-3 px-4">{appointment.vehicle_info}</td>
+                    <td className="py-3 px-4">
+                      {formatDateTime(new Date(appointment.start_time))}
+                    </td>
+                    <td className="py-3 px-4">
+                      {appointment.client?.name || 'Cliente não especificado'}
+                    </td>
+                    <td className="py-3 px-4">
+                      {appointment.vehicle ? 
+                        `${appointment.vehicle.make} ${appointment.vehicle.model} (${appointment.vehicle.plate})` : 
+                        'Veículo não especificado'}
+                    </td>
                     <td className="py-3 px-4">{appointment.service_type}</td>
-                    <td className="py-3 px-4">{formatDateTime(new Date(appointment.start_time))}</td>
                     <td className="py-3 px-4">{appointment.mechanic_name}</td>
                     <td className="py-3 px-4">
-                      <span className={cn(
-                        "inline-block px-2 py-1 rounded-full text-xs font-medium",
-                        appointment.status === 'scheduled' && "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-                        appointment.status === 'in-progress' && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-                        appointment.status === 'completed' && "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-                        appointment.status === 'cancelled' && "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                      )}>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                        appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                        appointment.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
+                        appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        appointment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
                         {getStatusLabel(appointment.status)}
                       </span>
                     </td>
                   </tr>
                 ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="text-center py-10 text-gray-500 dark:text-gray-400">
-                    Nenhum agendamento encontrado
-                  </td>
-                </tr>
               )}
             </tbody>
           </table>
@@ -259,7 +270,6 @@ export default function ListView() {
           appointment={selectedAppointment}
           isOpen={isDetailsOpen}
           onClose={() => setIsDetailsOpen(false)}
-          onUpdate={() => {}} // Recarregar dados quando houver atualização
         />
       )}
     </div>
