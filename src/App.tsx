@@ -7,8 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 // Pages
 import Index from "./pages/Index";
-import Login from "./components/auth/Login";
-import Register from "./components/auth/Register";
+import AuthScreen from "./components/auth/AuthScreen";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
@@ -32,8 +31,8 @@ const App = () => (
         <Routes>
           {/* Páginas públicas */}
           <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<AuthScreen />} />
+          <Route path="/auth" element={<AuthScreen />} />
           
           {/* Páginas protegidas (dentro do layout) */}
           <Route element={<Layout />}>

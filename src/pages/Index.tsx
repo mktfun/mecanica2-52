@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import authService from '../services/authService';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
@@ -9,9 +9,14 @@ const Index = () => {
   
   useEffect(() => {
     // Se o usuário já estiver autenticado, redireciona para o dashboard
-    if (authService.isAuthenticated()) {
-      navigate('/dashboard');
-    }
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        navigate('/dashboard');
+      }
+    };
+    
+    checkAuth();
   }, [navigate]);
   
   return (
@@ -29,14 +34,6 @@ const Index = () => {
             onClick={() => navigate('/login')}
           >
             Entrar no Sistema
-          </Button>
-          
-          <Button 
-            variant="outline"
-            size="lg"
-            onClick={() => navigate('/register')}
-          >
-            Registrar
           </Button>
         </div>
         
