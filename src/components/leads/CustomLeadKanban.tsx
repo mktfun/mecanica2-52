@@ -197,11 +197,7 @@ const CustomLeadKanban = () => {
       // Mover todos os leads para a coluna de fallback
       try {
         for (const lead of leadsInColumn) {
-          enhancedLeadsStore.update(lead.id, {
-            ...lead,
-            status: fallbackColumn.id as LeadStatus,
-            status_changed_at: new Date().toISOString()
-          });
+          await updateLeadStatus(lead.id, fallbackColumn.id);
         }
         
         toast.success(`${leadsInColumn.length} leads movidos para ${fallbackColumn.title}`);

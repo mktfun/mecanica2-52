@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Lead } from '@/types/lead';
+import { Lead, LeadStatus } from '@/types/lead';
 import { toast } from 'sonner';
 
 export const useLeads = () => {
@@ -37,7 +37,7 @@ export const useLeads = () => {
         source: lead.source || 'direct',
         potential_value: lead.potential_value || 0,
         assigned_to: lead.assigned_to || '',
-        status: lead.status as any,
+        status: lead.status as LeadStatus, // Garantir que o status seja tratado como LeadStatus
         notes: lead.notes || '',
         created_at: lead.created_at,
         updated_at: lead.updated_at,
@@ -81,7 +81,7 @@ export const useLeads = () => {
           source: data[0].source || 'direct',
           potential_value: data[0].potential_value || 0,
           assigned_to: data[0].assigned_to || '',
-          status: data[0].status as any,
+          status: data[0].status as LeadStatus, // Cast para LeadStatus
           notes: data[0].notes || '',
           created_at: data[0].created_at,
           updated_at: data[0].updated_at,
@@ -117,7 +117,11 @@ export const useLeads = () => {
       if (data && data[0]) {
         setLeads(prevLeads => 
           prevLeads.map(lead => 
-            lead.id === id ? { ...lead, ...data[0] } : lead
+            lead.id === id ? { 
+              ...lead, 
+              ...data[0], 
+              status: data[0].status as LeadStatus // Cast para LeadStatus
+            } : lead
           )
         );
         
@@ -133,7 +137,7 @@ export const useLeads = () => {
 
   // Função específica para atualizar o status do lead (para drag-and-drop no Kanban)
   const updateLeadStatus = async (id: string, newStatus: string) => {
-    return updateLead(id, { status: newStatus });
+    return updateLead(id, { status: newStatus as LeadStatus });
   };
 
   // Inicializar o hook buscando os leads
