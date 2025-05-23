@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -169,19 +168,18 @@ export function AppointmentForm({
   // Verificar se lead tem cliente ou veículo associado, caso contrário criar novos
   const processSelectedLead = async (lead: Lead) => {
     try {
-      // Se o lead já tem cliente associado
       if (lead.client_id) {
         setClientId(lead.client_id);
         
-        // Se também tem veículo associado
-        if (lead.vehicle_id) {
+        if (lead.vehicle) {
+          setVehicleId(lead.vehicle.id);
+        } else if (lead.vehicle_id) {
           setVehicleId(lead.vehicle_id);
         }
         
         return;
       }
       
-      // Caso não tenha cliente associado, criar um novo cliente
       if (!userOrganizationId) {
         toast.error('Usuário não pertence a nenhuma organização');
         return;
@@ -218,40 +216,13 @@ export function AppointmentForm({
       // Setar o client_id para o formulário
       setClientId(client.id);
       
-      // Verificar se o lead tem informações de veículo e criar
-      if (lead.vehicle_brand || lead.vehicle_model || lead.vehicle_year) {
-        const { data: vehicle, error: vehicleError } = await supabase
-          .from('vehicles')
-          .insert([{
-            client_id: client.id,
-            make: lead.vehicle_brand || 'Não especificado',
-            model: lead.vehicle_model || 'Não especificado',
-            year: lead.vehicle_year,
-            plate: 'A definir', // Placeholder necessário pois o campo é obrigatório
-            organization_id: userOrganizationId
-          }])
-          .select()
-          .single();
-        
-        if (vehicleError) {
-          console.error('Erro ao criar veículo a partir do lead:', vehicleError);
-          toast.error('Erro ao criar veículo para o lead');
-          return;
-        }
-        
-        // Atualizar lead com o novo vehicle_id
-        const { error: updateLeadVehicleError } = await supabase
-          .from('leads')
-          .update({ vehicle_id: vehicle.id })
-          .eq('id', lead.id);
-        
-        if (updateLeadVehicleError) {
-          console.error('Erro ao atualizar lead com vehicleId:', updateLeadVehicleError);
-        }
-        
-        // Setar o vehicle_id para o formulário
-        setVehicleId(vehicle.id);
+      // Se o lead tem veículo associado, usar os dados dele
+      if (lead.vehicle) {
+        setVehicleId(lead.vehicle.id);
+      } else if (lead.vehicle_id) {
+        setVehicleId(lead.vehicle_id);
       }
+      
     } catch (error) {
       console.error('Erro ao processar lead:', error);
       toast.error('Erro ao processar informações do lead');
@@ -263,7 +234,6 @@ export function AppointmentForm({
     setSelectedLeadId(leadId);
     
     if (leadId === 'none') {
-      // Limpar os seletores de cliente e veículo
       setClientId(undefined);
       setVehicleId(undefined);
       setFormData(prev => ({
@@ -276,7 +246,6 @@ export function AppointmentForm({
     }
     
     try {
-      // Buscar o lead selecionado do Supabase
       const { data: lead, error } = await supabase
         .from('leads')
         .select('*, client:client_id(*), vehicle:vehicle_id(*)')
@@ -290,7 +259,7 @@ export function AppointmentForm({
       }
       
       // Processar o lead para criar cliente/veículo se necessário
-      await processSelectedLead(lead);
+      await processSelectedLead(lead as Lead);
       
       // Atualizar dados do formulário com informações do lead
       setFormData(prev => ({
@@ -426,7 +395,6 @@ export function AppointmentForm({
     
     if (validateForm()) {
       if (formData.lead_id && formData.status === 'scheduled') {
-        // Atualizar status do lead para 'scheduled'
         try {
           await supabase.from('leads')
             .update({ status: 'scheduled', status_changed_at: new Date().toISOString() })
@@ -475,7 +443,7 @@ export function AppointmentForm({
                       <SelectItem value="none">Sem lead</SelectItem>
                       {leads.map(lead => (
                         <SelectItem key={lead.id} value={lead.id}>
-                          {lead.name} - {lead.phone} - {lead.vehicle_brand ? `${lead.vehicle_brand} ${lead.vehicle_model}` : "Sem veículo"}
+                          {lead.name} - {lead.phone} - {lead.vehicle ? `${lead.vehicle.make} ${lead.vehicle.model}` : "Sem veículo"}
                         </SelectItem>
                       ))}
                     </SelectContent>

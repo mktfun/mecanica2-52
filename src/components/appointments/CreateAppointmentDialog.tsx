@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AppointmentForm } from './AppointmentForm';
@@ -85,21 +84,25 @@ export default function CreateAppointmentDialog({
     setActiveTab('dateTime');
   };
   
-  const handleSubmit = (appointmentData: Partial<Appointment>) => {
-    // Combine os dados do formulário com a data/hora selecionada
-    const finalData = {
-      ...appointmentData,
-      start_time: formData.start_time,
-      end_time: formData.end_time
-    };
-    
-    const createdAppointment = addAppointment(finalData as Omit<Appointment, 'id' | 'created_at' | 'updated_at'>);
-    
-    if (createdAppointment) {
-      handleClose();
-      if (onCreated) {
-        onCreated(createdAppointment);
+  const handleSubmit = async (appointmentData: Partial<Appointment>) => {
+    try {
+      // Combine os dados do formulário com a data/hora selecionada
+      const finalData = {
+        ...appointmentData,
+        start_time: formData.start_time,
+        end_time: formData.end_time
+      };
+      
+      const createdAppointment = await addAppointment(finalData as Omit<Appointment, 'id' | 'created_at' | 'updated_at' | 'organization_id'>);
+      
+      if (createdAppointment) {
+        handleClose();
+        if (onCreated) {
+          onCreated(createdAppointment);
+        }
       }
+    } catch (error) {
+      console.error('Erro ao criar agendamento:', error);
     }
   };
   

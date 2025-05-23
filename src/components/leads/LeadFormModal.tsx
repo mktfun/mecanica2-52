@@ -24,9 +24,6 @@ const DEFAULT_LEAD: Partial<Lead> = {
   name: '',
   email: '',
   phone: '',
-  vehicle_brand: '',
-  vehicle_model: '',
-  vehicle_year: '',
   service_interest: '',
   source: 'direct',
   potential_value: 0,
@@ -143,36 +140,6 @@ export function LeadFormModal({
                   value={formData.potential_value || 0}
                   onChange={(e) => handleChange('potential_value', parseFloat(e.target.value))}
                   placeholder="R$ 0,00"
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="vehicle_brand">Marca do Veículo</Label>
-                <Input
-                  id="vehicle_brand"
-                  value={formData.vehicle_brand || ''}
-                  onChange={(e) => handleChange('vehicle_brand', e.target.value)}
-                  placeholder="Marca"
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="vehicle_model">Modelo do Veículo</Label>
-                <Input
-                  id="vehicle_model"
-                  value={formData.vehicle_model || ''}
-                  onChange={(e) => handleChange('vehicle_model', e.target.value)}
-                  placeholder="Modelo"
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="vehicle_year">Ano do Veículo</Label>
-                <Input
-                  id="vehicle_year"
-                  value={formData.vehicle_year || ''}
-                  onChange={(e) => handleChange('vehicle_year', e.target.value)}
-                  placeholder="Ano"
                 />
               </div>
               

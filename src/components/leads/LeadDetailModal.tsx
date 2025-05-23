@@ -107,13 +107,13 @@ const LeadDetailModal = ({ lead, open, onOpenChange }: LeadDetailModalProps) => 
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
-                <strong>Marca:</strong> {lead.vehicle_brand || "Não informado"}
+                <strong>Marca:</strong> {lead.vehicle?.make || "Não informado"}
               </div>
               <div>
-                <strong>Modelo:</strong> {lead.vehicle_model || "Não informado"}
+                <strong>Modelo:</strong> {lead.vehicle?.model || "Não informado"}
               </div>
               <div>
-                <strong>Ano:</strong> {lead.vehicle_year || "Não informado"}
+                <strong>Ano:</strong> {lead.vehicle?.year || "Não informado"}
               </div>
               <div>
                 <strong>Serviço de Interesse:</strong> {lead.service_interest || "Não informado"}

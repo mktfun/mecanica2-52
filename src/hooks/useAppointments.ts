@@ -1,52 +1,7 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
-
-export interface Appointment {
-  id: string;
-  client_id: string;
-  vehicle_id: string;
-  lead_id?: string;
-  service_type: string;
-  service_description?: string;
-  start_time: string;
-  end_time: string;
-  mechanic_name: string;
-  status: AppointmentStatus;
-  notes?: string;
-  estimated_cost?: number;
-  organization_id?: string;
-  created_at: string;
-  updated_at: string;
-  // Propriedades expandidas para relacionamentos
-  client?: {
-    id: string;
-    name: string;
-    email?: string;
-    phone?: string;
-  };
-  vehicle?: {
-    id: string;
-    make: string;
-    model: string;
-    year?: string;
-    plate: string;
-  };
-}
-
-export type AppointmentStatus = 'scheduled' | 'confirmed' | 'in-progress' | 'completed' | 'cancelled';
-
-export interface AppointmentFilter {
-  startDate?: Date;
-  endDate?: Date;
-  client?: string;
-  vehicle?: string;
-  service?: string;
-  mechanic?: string;
-  status?: AppointmentStatus;
-  searchText?: string;
-}
+import { Appointment, AppointmentStatus, AppointmentFilter } from '@/types/appointment';
 
 export function useAppointments(filter?: AppointmentFilter) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -68,7 +23,7 @@ export function useAppointments(filter?: AppointmentFilter) {
         .single();
 
       if (membershipError) {
-        if (membershipError.code !== 'PGRST116') { // PGRST116 é o código para "no rows found"
+        if (membershipError.code !== 'PGRST116') {
           console.error('Erro ao buscar organização do usuário:', membershipError);
         }
         return null;
@@ -86,7 +41,6 @@ export function useAppointments(filter?: AppointmentFilter) {
     setIsLoading(true);
     setError(null);
 
-    // Verificar se temos uma organização
     const orgId = userOrganizationId || await fetchUserOrganization();
     
     if (!orgId) {
@@ -110,7 +64,27 @@ export function useAppointments(filter?: AppointmentFilter) {
         throw error;
       }
 
-      setAppointments(data || []);
+      const formattedAppointments: Appointment[] = (data || []).map(appointment => ({
+        id: appointment.id,
+        client_id: appointment.client_id,
+        vehicle_id: appointment.vehicle_id,
+        lead_id: appointment.lead_id,
+        service_type: appointment.service_type,
+        service_description: appointment.service_description,
+        start_time: appointment.start_time,
+        end_time: appointment.end_time,
+        mechanic_name: appointment.mechanic_name,
+        status: appointment.status as AppointmentStatus,
+        notes: appointment.notes,
+        estimated_cost: appointment.estimated_cost,
+        organization_id: appointment.organization_id,
+        created_at: appointment.created_at,
+        updated_at: appointment.updated_at,
+        client: appointment.client,
+        vehicle: appointment.vehicle
+      }));
+
+      setAppointments(formattedAppointments);
     } catch (err: any) {
       console.error('Erro ao buscar agendamentos:', err);
       setError(err.message || 'Erro ao carregar agendamentos');
@@ -199,7 +173,6 @@ export function useAppointments(filter?: AppointmentFilter) {
 
   // Adicionar um novo agendamento
   const addAppointment = async (appointment: Omit<Appointment, 'id' | 'created_at' | 'updated_at' | 'organization_id'>) => {
-    // Verificar se temos uma organização
     const orgId = userOrganizationId || await fetchUserOrganization();
     
     if (!orgId) {
@@ -208,7 +181,6 @@ export function useAppointments(filter?: AppointmentFilter) {
     }
     
     try {
-      // Verificar conflitos de horário
       if (checkForTimeConflicts(appointment)) {
         toast.error("Conflito de horário", {
           description: "Já existe um agendamento para este mecânico neste horário"
@@ -216,13 +188,11 @@ export function useAppointments(filter?: AppointmentFilter) {
         return null;
       }
       
-      // Adicionar organização ao agendamento
       const appointmentData = {
         ...appointment,
         organization_id: orgId
       };
       
-      // Inserir no Supabase
       const { data, error } = await supabase
         .from('appointments')
         .insert([appointmentData])
@@ -237,7 +207,6 @@ export function useAppointments(filter?: AppointmentFilter) {
         throw error;
       }
       
-      // Se o agendamento está associado a um lead, atualizar status do lead
       if (appointment.lead_id) {
         await supabase
           .from('leads')
@@ -249,14 +218,33 @@ export function useAppointments(filter?: AppointmentFilter) {
           .eq('id', appointment.lead_id);
       }
       
-      // Adicionar à lista de agendamentos
-      setAppointments(prev => [...prev, data]);
+      const formattedAppointment: Appointment = {
+        id: data.id,
+        client_id: data.client_id,
+        vehicle_id: data.vehicle_id,
+        lead_id: data.lead_id,
+        service_type: data.service_type,
+        service_description: data.service_description,
+        start_time: data.start_time,
+        end_time: data.end_time,
+        mechanic_name: data.mechanic_name,
+        status: data.status as AppointmentStatus,
+        notes: data.notes,
+        estimated_cost: data.estimated_cost,
+        organization_id: data.organization_id,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        client: data.client,
+        vehicle: data.vehicle
+      };
+      
+      setAppointments(prev => [...prev, formattedAppointment]);
       
       toast.success("Agendamento criado", {
         description: "O agendamento foi criado com sucesso"
       });
       
-      return data;
+      return formattedAppointment;
     } catch (error) {
       console.error("Erro ao criar agendamento:", error);
       toast.error("Erro", {
@@ -269,7 +257,6 @@ export function useAppointments(filter?: AppointmentFilter) {
   // Atualizar um agendamento existente
   const updateAppointment = async (id: string, updates: Partial<Appointment>) => {
     try {
-      // Verificar conflitos de horário (excluindo o próprio agendamento)
       if ((updates.start_time || updates.end_time || updates.mechanic_name) && 
           checkForTimeConflicts(updates, id)) {
         toast.error("Conflito de horário", {
@@ -278,7 +265,6 @@ export function useAppointments(filter?: AppointmentFilter) {
         return null;
       }
 
-      // Atualizar no Supabase
       const { data, error } = await supabase
         .from('appointments')
         .update(updates)
@@ -294,7 +280,6 @@ export function useAppointments(filter?: AppointmentFilter) {
         throw error;
       }
 
-      // Atualizar na lista local
       setAppointments(prev => 
         prev.map(appointment => appointment.id === id ? data : appointment)
       );
@@ -331,7 +316,6 @@ export function useAppointments(filter?: AppointmentFilter) {
         throw error;
       }
 
-      // Atualizar na lista local
       setAppointments(prev => 
         prev.map(appointment => appointment.id === id ? data : appointment)
       );
@@ -365,7 +349,6 @@ export function useAppointments(filter?: AppointmentFilter) {
         throw error;
       }
 
-      // Remover da lista local
       setAppointments(prev => prev.filter(appointment => appointment.id !== id));
       
       toast.success("Agendamento removido", {
@@ -406,10 +389,8 @@ export function useAppointments(filter?: AppointmentFilter) {
     const appointmentEnd = new Date(appointment.end_time);
     
     return appointments.some(existing => {
-      // Ignorar o agendamento atual em caso de atualização
       if (excludeId && existing.id === excludeId) return false;
       
-      // Verificar apenas agendamentos do mesmo mecânico e que não estejam cancelados
       if (existing.mechanic_name !== appointment.mechanic_name || existing.status === 'cancelled') {
         return false;
       }
@@ -417,11 +398,10 @@ export function useAppointments(filter?: AppointmentFilter) {
       const existingStart = new Date(existing.start_time);
       const existingEnd = new Date(existing.end_time);
       
-      // Verificar se há sobreposição de horários
       return (
-        (appointmentStart >= existingStart && appointmentStart < existingEnd) || // Início durante outro agendamento
-        (appointmentEnd > existingStart && appointmentEnd <= existingEnd) || // Término durante outro agendamento
-        (appointmentStart <= existingStart && appointmentEnd >= existingEnd) // Engloba outro agendamento
+        (appointmentStart >= existingStart && appointmentStart < existingEnd) ||
+        (appointmentEnd > existingStart && appointmentEnd <= existingEnd) ||
+        (appointmentStart <= existingStart && appointmentEnd >= existingEnd)
       );
     });
   };
