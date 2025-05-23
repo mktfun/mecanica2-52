@@ -17,6 +17,7 @@ export interface Lead {
   updated_at: string;
   status_changed_at: string;
   last_interaction_at: string;
+  organization_id?: string; // Campo adicionado para suporte a multi-tenant
 }
 
 // Make sure this is properly defined and exported

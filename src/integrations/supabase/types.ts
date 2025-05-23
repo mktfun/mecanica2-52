@@ -18,6 +18,7 @@ export type Database = {
           last_interaction_at: string
           name: string
           notes: string | null
+          organization_id: string | null
           phone: string
           potential_value: number | null
           service_interest: string | null
@@ -37,6 +38,7 @@ export type Database = {
           last_interaction_at?: string
           name: string
           notes?: string | null
+          organization_id?: string | null
           phone: string
           potential_value?: number | null
           service_interest?: string | null
@@ -56,6 +58,7 @@ export type Database = {
           last_interaction_at?: string
           name?: string
           notes?: string | null
+          organization_id?: string | null
           phone?: string
           potential_value?: number | null
           service_interest?: string | null
@@ -67,6 +70,61 @@ export type Database = {
           vehicle_model?: string | null
           vehicle_year?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "leads_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_members: {
+        Row: {
+          created_at: string | null
+          organization_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          organization_id: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          organization_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
         Relationships: []
       }
     }
@@ -74,7 +132,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_my_organizations: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
     }
     Enums: {
       [_ in never]: never

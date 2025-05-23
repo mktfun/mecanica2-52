@@ -8,16 +8,53 @@ export const useLeads = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userOrganizationId, setUserOrganizationId] = useState<string | null>(null);
+
+  // Função para buscar a organização do usuário atual
+  const fetchUserOrganization = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data: memberships, error: membershipError } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (membershipError) {
+        if (membershipError.code !== 'PGRST116') { // PGRST116 é o código para "no rows found"
+          console.error('Erro ao buscar organização do usuário:', membershipError);
+        }
+        return null;
+      }
+
+      return memberships?.organization_id || null;
+    } catch (err) {
+      console.error('Erro ao buscar usuário ou organização:', err);
+      return null;
+    }
+  }, []);
 
   // Função para buscar todos os leads
   const fetchLeads = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
+    // Verificar se temos uma organização
+    const orgId = userOrganizationId || await fetchUserOrganization();
+    
+    if (!orgId) {
+      setIsLoading(false);
+      setError('Usuário não pertence a nenhuma organização');
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('leads')
         .select('*')
+        .eq('organization_id', orgId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -42,7 +79,8 @@ export const useLeads = () => {
         created_at: lead.created_at,
         updated_at: lead.updated_at,
         status_changed_at: lead.status_changed_at,
-        last_interaction_at: lead.last_interaction_at
+        last_interaction_at: lead.last_interaction_at,
+        organization_id: lead.organization_id
       }));
 
       setLeads(formattedLeads);
@@ -53,14 +91,27 @@ export const useLeads = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [userOrganizationId, fetchUserOrganization]);
 
   // Função para adicionar um lead
   const addLead = async (newLead: Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'status_changed_at' | 'last_interaction_at'>) => {
+    // Verificar se temos uma organização
+    const orgId = userOrganizationId || await fetchUserOrganization();
+    
+    if (!orgId) {
+      toast.error('Usuário não pertence a nenhuma organização');
+      throw new Error('Usuário não pertence a nenhuma organização');
+    }
+
     try {
+      const leadWithOrg = {
+        ...newLead,
+        organization_id: orgId
+      };
+
       const { data, error } = await supabase
         .from('leads')
-        .insert([newLead])
+        .insert([leadWithOrg])
         .select();
 
       if (error) {
@@ -86,7 +137,8 @@ export const useLeads = () => {
           created_at: data[0].created_at,
           updated_at: data[0].updated_at,
           status_changed_at: data[0].status_changed_at,
-          last_interaction_at: data[0].last_interaction_at
+          last_interaction_at: data[0].last_interaction_at,
+          organization_id: data[0].organization_id
         };
         
         setLeads(prevLeads => [formattedLead, ...prevLeads]);
@@ -140,30 +192,45 @@ export const useLeads = () => {
     return updateLead(id, { status: newStatus as LeadStatus });
   };
 
-  // Inicializar o hook buscando os leads
+  // Inicializar o hook buscando a organização do usuário e então os leads
   useEffect(() => {
-    fetchLeads();
-    
-    // Configurar a escuta em tempo real para atualizações de leads
-    const channel = supabase
-      .channel('realtime_leads')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'leads'
-      }, (payload) => {
-        console.log('Alteração em tempo real detectada:', payload);
-        // Recarregar todos os leads quando houver uma alteração
-        // Isso pode ser otimizado depois para só atualizar os registros específicos
+    const init = async () => {
+      const orgId = await fetchUserOrganization();
+      setUserOrganizationId(orgId);
+      
+      if (orgId) {
+        // Se o usuário tem uma organização, buscar leads
         fetchLeads();
-      })
-      .subscribe();
+        
+        // Configurar a escuta em tempo real para atualizações de leads
+        const channel = supabase
+          .channel('realtime_leads')
+          .on('postgres_changes', { 
+            event: '*', 
+            schema: 'public', 
+            table: 'leads',
+            filter: `organization_id=eq.${orgId}`
+          }, (payload) => {
+            console.log('Alteração em tempo real detectada:', payload);
+            // Recarregar todos os leads quando houver uma alteração
+            fetchLeads();
+          })
+          .subscribe();
 
-    return () => {
-      // Limpar a assinatura ao desmontar o componente
-      supabase.removeChannel(channel);
+        return () => {
+          // Limpar a assinatura ao desmontar o componente
+          supabase.removeChannel(channel);
+        };
+      } else {
+        // Se o usuário não tem uma organização, definir o estado como vazio
+        setLeads([]);
+        setIsLoading(false);
+        setError('Usuário não pertence a nenhuma organização');
+      }
     };
-  }, [fetchLeads]);
+
+    init();
+  }, [fetchUserOrganization]);
 
   return {
     leads,
@@ -172,6 +239,7 @@ export const useLeads = () => {
     fetchLeads,
     addLead,
     updateLead,
-    updateLeadStatus
+    updateLeadStatus,
+    userOrganizationId
   };
 };
