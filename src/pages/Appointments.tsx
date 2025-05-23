@@ -2,14 +2,14 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, ListFilter, Grid3X3, LayoutList, Plus } from 'lucide-react';
+import { Calendar, Grid3X3, LayoutList, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import DailyView from '@/components/appointments/DailyView';
 import WeeklyView from '@/components/appointments/WeeklyView';
 import MonthlyView from '@/components/appointments/MonthlyView';
 import ListViewAppointments from '@/components/appointments/ListView';
 import CreateAppointmentDialog from '@/components/appointments/CreateAppointmentDialog';
-import { Button } from '@/components/ui/button';
 import { AppointmentFilter } from '@/types/appointment';
 import { useAppointments } from '@/hooks/useAppointments';
 
@@ -82,86 +82,109 @@ const Appointments = () => {
   };
   
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between gap-4">
+    <div className="p-6 space-y-6 bg-gray-50/30 dark:bg-gray-900/30 min-h-screen">
+      {/* Header moderno */}
+      <div className="flex flex-col lg:flex-row justify-between gap-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Agendamentos</h1>
-          <p className="text-gray-500 dark:text-gray-400">Gerencie todos os agendamentos da oficina</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Gerencie todos os agendamentos da oficina</p>
         </div>
         
-        <div className="flex gap-2">
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
+        <div className="flex gap-3">
+          <Button 
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-sm transition-all duration-200"
+          >
             <Plus className="mr-2 h-4 w-4" />
             Novo Agendamento
           </Button>
         </div>
       </div>
       
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 overflow-hidden">
-        <div className="p-4 border-b dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <Tabs 
-            value={view} 
-            onValueChange={(v) => setView(v as 'day' | 'week' | 'month' | 'list')}
-            className="w-full sm:w-auto"
-          >
-            <TabsList className="grid grid-cols-4 w-full sm:w-auto">
-              <TabsTrigger value="day" className="flex items-center gap-1">
-                <Grid3X3 className="h-4 w-4" />
-                <span className="hidden sm:inline">Dia</span>
-              </TabsTrigger>
-              <TabsTrigger value="week" className="flex items-center gap-1">
-                <LayoutList className="h-4 w-4" />
-                <span className="hidden sm:inline">Semana</span>
-              </TabsTrigger>
-              <TabsTrigger value="month" className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                <span className="hidden sm:inline">Mês</span>
-              </TabsTrigger>
-              <TabsTrigger value="list" className="flex items-center gap-1">
-                <ListFilter className="h-4 w-4" />
-                <span className="hidden sm:inline">Lista</span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handlePreviousDate}
-              className="px-2"
-              disabled={view === 'list'}
+      {/* Container principal com estilo moderno */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border-0 overflow-hidden">
+        {/* Barra de controles modernizada */}
+        <div className="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/50">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            {/* Tabs de visualização com estilo moderno */}
+            <Tabs 
+              value={view} 
+              onValueChange={(v) => setView(v as 'day' | 'week' | 'month' | 'list')}
+              className="w-full lg:w-auto"
             >
-              &lt;
-            </Button>
+              <TabsList className="grid grid-cols-4 w-full lg:w-auto bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
+                <TabsTrigger 
+                  value="day" 
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-600"
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Dia</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="week" 
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-600"
+                >
+                  <LayoutList className="h-4 w-4" />
+                  <span className="hidden sm:inline">Semana</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="month" 
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-600"
+                >
+                  <Calendar className="h-4 w-4" />
+                  <span className="hidden sm:inline">Mês</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="list" 
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-gray-600"
+                >
+                  <LayoutList className="h-4 w-4" />
+                  <span className="hidden sm:inline">Lista</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
             
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleToday}
-              className="px-2 text-xs whitespace-nowrap"
-              disabled={view === 'list'}
-            >
-              Hoje
-            </Button>
-            
-            <span className="text-sm font-medium min-w-[180px] text-center">
-              {getDateRangeDisplay()}
-            </span>
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleNextDate}
-              className="px-2"
-              disabled={view === 'list'}
-            >
-              &gt;
-            </Button>
+            {/* Controles de navegação modernos */}
+            <div className="flex items-center gap-3 w-full lg:w-auto">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handlePreviousDate}
+                className="h-8 w-8 p-0 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                disabled={view === 'list'}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleToday}
+                className="px-4 py-2 text-sm font-medium whitespace-nowrap"
+                disabled={view === 'list'}
+              >
+                Hoje
+              </Button>
+              
+              <div className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[200px] text-center capitalize">
+                {getDateRangeDisplay()}
+              </div>
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleNextDate}
+                className="h-8 w-8 p-0 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                disabled={view === 'list'}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
         
-        <div>
+        {/* Área de conteúdo */}
+        <div className="p-6">
           {view === 'day' && <DailyView selectedDate={selectedDate} />}
           {view === 'week' && <WeeklyView selectedDate={selectedDate} />}
           {view === 'month' && <MonthlyView selectedDate={selectedDate} onDateSelected={setSelectedDate} />}

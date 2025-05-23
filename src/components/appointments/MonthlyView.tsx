@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   format, 
@@ -14,6 +13,7 @@ import {
 import { ptBR } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
 import { Skeleton } from '@/components/ui/skeleton';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from "sonner";
 import { useAppointments } from '@/hooks/useAppointments';
 
@@ -122,76 +122,107 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({
   const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
   return (
-    <div className="monthly-view">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
+    <div className="monthly-view bg-gray-50/30 dark:bg-gray-900/30 rounded-lg p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border-0 overflow-hidden">
+        {/* Header moderno com navegação */}
+        <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/50">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost"
+              size="sm"
+              onClick={handlePreviousMonth}
+              className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <h2 className="text-xl font-semibold capitalize text-gray-900 dark:text-gray-100 min-w-[180px]">
+              {formattedMonthYear}
+            </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleNextMonth}
+              className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
           <Button 
             variant="outline"
-            size="icon"
-            onClick={handlePreviousMonth}
+            size="sm"
+            onClick={handleToday}
+            className="px-4 py-2 text-sm font-medium"
           >
-            &lt;
-          </Button>
-          <h2 className="text-xl font-semibold capitalize">{formattedMonthYear}</h2>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleNextMonth}
-          >
-            &gt;
+            Hoje
           </Button>
         </div>
-        <Button 
-          variant="outline"
-          onClick={handleToday}
-        >
-          Hoje
-        </Button>
-      </div>
 
-      <div className="grid grid-cols-7 gap-1">
-        {dayNames.map((day, i) => (
-          <div 
-            key={i}
-            className="text-center py-2 text-sm font-medium text-gray-500"
-          >
-            {day}
-          </div>
-        ))}
-        
-        {dates.map((week, weekIndex) => (
-          <React.Fragment key={`week-${weekIndex}`}>
-            {week.map((day, dayIndex) => (
+        {/* Calendário */}
+        <div className="p-6">
+          <div className="grid grid-cols-7 gap-2 mb-4">
+            {dayNames.map((day, i) => (
               <div 
-                key={`day-${day.getTime()}`}
-                className={`
-                  border p-1 min-h-[80px] hover:bg-gray-50 cursor-pointer
-                  ${isToday(day) ? 'bg-blue-50 border-blue-200' : ''}
-                  ${!isCurrentMonth(day) ? 'text-gray-400 bg-gray-50' : ''}
-                `}
-                onClick={() => onDateSelected(day)}
+                key={i}
+                className="text-center py-3 text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
               >
-                <div className="flex justify-between items-start h-full flex-col">
-                  <div className="w-full flex justify-between">
-                    <span className={`text-sm ${isToday(day) ? 'font-bold' : ''}`}>
-                      {day.getDate()}
-                    </span>
-                    
-                    {isLoading ? (
-                      <Skeleton className="w-5 h-5 rounded-full" />
-                    ) : (
-                      hasAppointmentsOnDay(day) && (
-                        <span className="flex items-center justify-center w-5 h-5 bg-blue-100 rounded-full text-xs text-blue-800">
-                          {getAppointmentCount(day)}
-                        </span>
-                      )
-                    )}
-                  </div>
-                </div>
+                {day}
               </div>
             ))}
-          </React.Fragment>
-        ))}
+          </div>
+          
+          <div className="grid grid-cols-7 gap-2">
+            {dates.map((week, weekIndex) => (
+              <React.Fragment key={`week-${weekIndex}`}>
+                {week.map((day, dayIndex) => (
+                  <div 
+                    key={`day-${day.getTime()}`}
+                    className={`
+                      relative p-2 min-h-[80px] hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer rounded-lg transition-all duration-200 border-2 border-transparent
+                      ${isToday(day) ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700' : ''}
+                      ${!isCurrentMonth(day) ? 'opacity-40' : ''}
+                      hover:border-gray-200 dark:hover:border-gray-600
+                    `}
+                    onClick={() => onDateSelected(day)}
+                  >
+                    <div className="flex flex-col h-full">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className={`text-sm font-medium ${
+                          isToday(day) 
+                            ? 'text-blue-900 dark:text-blue-100' 
+                            : isCurrentMonth(day) 
+                              ? 'text-gray-900 dark:text-gray-100' 
+                              : 'text-gray-400 dark:text-gray-500'
+                        }`}>
+                          {day.getDate()}
+                        </span>
+                        
+                        {isLoading ? (
+                          <Skeleton className="w-4 h-4 rounded-full" />
+                        ) : (
+                          hasAppointmentsOnDay(day) && (
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                                {getAppointmentCount(day)}
+                              </span>
+                            </div>
+                          )
+                        )}
+                      </div>
+                      
+                      {/* Indicador visual para agendamentos */}
+                      {!isLoading && hasAppointmentsOnDay(day) && (
+                        <div className="flex-1 flex items-end">
+                          <div className="w-full h-1 bg-gradient-to-r from-blue-300 to-blue-500 rounded-full opacity-60"></div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
